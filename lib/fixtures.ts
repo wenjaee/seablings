@@ -119,6 +119,33 @@ export const seededBucketItems: BucketItem[] = [
     updatedAt: "2026-06-07T12:02:00Z"
   },
   {
+    id: "monmouth-coffee",
+    userId: "jeff",
+    status: "saved",
+    dateType: "anytime",
+    title: "Monmouth Coffee",
+    category: "cafe",
+    description: "Beloved independent coffee roaster with a small cosy space in Borough Market.",
+    whyInteresting: "Best pour-over in London — perfect before a market wander.",
+    locationName: "Monmouth Coffee",
+    neighborhood: "Borough Market",
+    address: "2 Park St, London SE1 9AB",
+    postalCode: "SE1 9AB",
+    priceEstimate: "$",
+    estimatedCost: 8,
+    openingHours: "Open daily",
+    openingHoursRows: [
+      { day: "Mon – Fri", hours: "7:30 – 18:00" },
+      { day: "Saturday",  hours: "9:00 – 17:00" },
+      { day: "Sunday",    hours: null },
+    ],
+    sourceType: "tiktok",
+    tags: ["coffee", "cosy", "independent"],
+    confidence: 0.89,
+    createdAt: "2026-06-06T09:50:00Z",
+    updatedAt: "2026-06-06T09:50:00Z"
+  },
+  {
     id: "brat-live-share",
     userId: "praya",
     status: "saved",
@@ -269,6 +296,10 @@ export const seededBucketItems: BucketItem[] = [
     priceEstimate: "$$",
     estimatedCost: 35,
     openingHours: "Mon-Wed 08:00-23:00; Thu-Fri 08:00-00:00; Sat 09:00-00:00; Sun 09:00-23:00",
+    openingHoursRows: [
+      { day: "Mon – Fri", hours: "8:00 – 23:00" },
+      { day: "Sat – Sun", hours: "9:00 – 23:00" },
+    ],
     websiteUrl: "https://www.dishoom.com/kings-cross/",
     sourceUrl: "https://www.dishoom.com/kings-cross/",
     sourceType: "manual",
@@ -387,6 +418,28 @@ export const seededBucketItems: BucketItem[] = [
     confidence: 0.92,
     createdAt: "2026-06-06T11:25:00Z",
     updatedAt: "2026-06-06T11:25:00Z"
+  },
+  {
+    id: "bread-ahead-bakery",
+    userId: "tana",
+    status: "saved",
+    dateType: "anytime",
+    title: "Bread Ahead Bakery",
+    category: "bakery",
+    description: "Famous Borough Market bakery known for doughnuts and sourdough.",
+    whyInteresting: "Iconic London bakery — easy crowd-pleaser for a morning plan.",
+    locationName: "Bread Ahead",
+    neighborhood: "Borough Market",
+    address: "Cathedral St, London SE1 9AL",
+    postalCode: "SE1 9AL",
+    priceEstimate: "$",
+    estimatedCost: 12,
+    openingHours: "Open daily",
+    sourceType: "instagram",
+    tags: ["bakery", "breakfast", "viral"],
+    confidence: 0.93,
+    createdAt: "2026-06-06T10:00:00Z",
+    updatedAt: "2026-06-06T10:00:00Z"
   }
 ];
 
