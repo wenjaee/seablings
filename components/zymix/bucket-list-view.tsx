@@ -121,7 +121,7 @@ export function BucketListView({ items: initial }: { items: BucketItem[] }) {
           {filtered.map((item) => {
             const visited = item.status === "completed";
             const tier = derivePriceTier(item.estimatedCost);
-            const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(item.address ?? item.locationName)}`;
+            const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(item.address ?? item.neighborhood ?? item.locationName)}`;
             return (
               <div
                 key={item.id}
@@ -131,23 +131,9 @@ export function BucketListView({ items: initial }: { items: BucketItem[] }) {
                   type="button"
                   onClick={() => toggleVisited(item)}
                   aria-label={visited ? "Mark as not visited" : "Mark as visited"}
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                    visited
-                      ? "border-[var(--zx-brand)] bg-[var(--zx-brand)]"
-                      : "border-[var(--zx-faint)]"
-                  }`}
+                  className="shrink-0"
                 >
-                  {visited && (
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none" aria-hidden>
-                      <path
-                        d="M1 4L3.5 6.5L9 1"
-                        stroke="var(--zx-brand-deep)"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
+                  <Checkmark visited={visited} />
                 </button>
 
                 <div className="min-w-0 flex-1">
@@ -231,7 +217,7 @@ function ItemSheet({
         aria-hidden
       />
       {/* Sheet panel — centred, max phone width */}
-      <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[430px] rounded-t-3xl bg-white px-5 pb-10 pt-4 shadow-2xl">
+      <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[430px] rounded-t-3xl bg-[var(--zx-surface)] px-5 pb-10 pt-4 shadow-2xl">
         <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-[var(--zx-line)]" />
 
         <div className="mb-3 flex items-start justify-between gap-2">

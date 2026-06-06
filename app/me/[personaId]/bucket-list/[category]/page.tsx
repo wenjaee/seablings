@@ -10,6 +10,12 @@ import type { BucketCategory, PersonaId } from "@/lib/domain";
 import { personas } from "@/lib/fixtures";
 import { getBackendStore } from "@/lib/server/store";
 
+export function generateStaticParams() {
+  const personaIds = ["jeff", "praya", "tana"];
+  const categories = Object.keys(CATEGORY_META) as BucketCategory[];
+  return personaIds.flatMap((personaId) => categories.map((category) => ({ personaId, category })));
+}
+
 export default async function CategoryListPage({
   params,
 }: {
