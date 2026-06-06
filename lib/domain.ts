@@ -82,6 +82,7 @@ export type BucketItem = {
   priceEstimate: PriceEstimateTier;
   estimatedCost: number;
   openingHours?: string;
+  openingHoursRows?: Array<{ day: string; hours: string | null }>;
   websiteUrl?: string;
   sourceUrl?: string;
   sourceType: SourcePlatform;
