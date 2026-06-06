@@ -1,31 +1,20 @@
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 import { PhoneShell } from "@/components/zymix/phone-shell";
 import { TabBar } from "@/components/zymix/tab-bar";
 import { CATEGORY_META } from "@/lib/bucket-ui";
-import type { BucketCategory, PersonaId } from "@/lib/domain";
-import { personas } from "@/lib/fixtures";
+import type { BucketCategory } from "@/lib/domain";
 import { getBackendStore } from "@/lib/server/store";
-
-export function generateStaticParams() {
-  return [{ personaId: "jeff" }, { personaId: "praya" }, { personaId: "tana" }];
-}
 
 export const metadata = { title: "Bucket List · ZYMIX" };
 
-export default async function BucketListLandingPage({
-  params,
-}: {
-  params: Promise<{ personaId: string }>;
-}) {
-  const { personaId } = await params;
-  const persona = personas.find((p) => p.id === personaId);
-  if (!persona) notFound();
+// TODO: replace with session.userId once auth lands
+const CURRENT_USER_ID = "jeff" as const;
 
+export default async function BucketListLandingPage() {
   const store = getBackendStore();
-  const allItems = await store.listBucketItems({ userId: persona.id as PersonaId });
+  const allItems = await store.listBucketItems({ userId: CURRENT_USER_ID });
   const visible = allItems.filter(
     (item) => item.status === "saved" || item.status === "completed",
   );
@@ -44,7 +33,7 @@ export default async function BucketListLandingPage({
       <main className="zx-hide-scroll flex-1 overflow-y-auto px-5 pt-1">
         <div className="flex items-center gap-3 pb-3 pt-1">
           <Link
-            href={`/me/${persona.id}`}
+            href="/me"
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--zx-surface)]"
           >
             <ChevronLeft size={18} className="text-[var(--zx-ink)]" />
@@ -68,7 +57,7 @@ export default async function BucketListLandingPage({
                 return (
                   <Link
                     key={cat}
-                    href={`/me/${persona.id}/bucket-list/${cat}`}
+                    href={`/me/bucket-list/${cat}`}
                     className="flex flex-col items-center gap-2 rounded-2xl bg-[var(--zx-surface)] px-2 pb-3 pt-4 transition-transform active:scale-95"
                   >
                     <span className="text-[34px] leading-none">{meta.emoji}</span>
