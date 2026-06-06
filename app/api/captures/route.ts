@@ -37,9 +37,7 @@ export async function POST(request: NextRequest) {
         task,
         hint: {
           processing: "queued",
-          nextStatus: "completed",
-          candidateStatus: "candidate",
-          drainPath: "/api/queue/drain",
+          nextStatus: "provider_pipeline_pending",
           mode: store.mode
         }
       },
