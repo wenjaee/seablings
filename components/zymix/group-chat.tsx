@@ -262,7 +262,7 @@ function MessageComposer({
   isSending: boolean;
 }) {
   return (
-    <div className="shrink-0 px-3 pt-2" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+    <div className="shrink-0 px-2 pt-2 sm:px-3" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -272,7 +272,7 @@ function MessageComposer({
           <Plus size={22} />
         </button>
 
-        <div className="flex flex-1 items-center gap-2 rounded-full bg-[var(--zx-surface)] px-4 py-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-[var(--zx-surface)] px-4 py-2.5">
           <input
             name="message"
             value={draft}
@@ -396,16 +396,16 @@ function ChatView({
           <ArrowLeft size={22} />
         </Link>
 
-        <div className="flex flex-1 items-center justify-center gap-2.5">
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-2.5">
           <Avatar spec={thread.avatar} size={36} />
-          <div>
+          <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-[17px] font-semibold leading-tight text-[var(--zx-ink)]">
-              <span>{thread.name}</span>
+              <span className="truncate">{thread.name}</span>
               {thread.verified ? (
                 <BadgeCheck size={16} className="shrink-0" fill="var(--zx-brand)" stroke="#ffffff" strokeWidth={2.4} aria-hidden />
               ) : null}
             </p>
-            <p className="text-[13px] leading-tight text-[var(--zx-muted)]">{thread.subtitle}</p>
+            <p className="truncate text-[13px] leading-tight text-[var(--zx-muted)]">{thread.subtitle}</p>
           </div>
         </div>
 
@@ -442,11 +442,17 @@ function ChatView({
               <div
                 className={
                   message.failed
-                    ? "flex max-w-[78%] items-end gap-2 rounded-2xl rounded-tr-md bg-[#ffd8d3] px-3.5 py-2"
-                    : "flex max-w-[78%] items-end gap-2 rounded-2xl rounded-tr-md bg-[var(--zx-brand)] px-3.5 py-2"
+                    ? "flex min-w-0 max-w-[78%] items-end gap-2 rounded-2xl rounded-tr-md bg-[#ffd8d3] px-3.5 py-2"
+                    : "flex min-w-0 max-w-[78%] items-end gap-2 rounded-2xl rounded-tr-md bg-[var(--zx-brand)] px-3.5 py-2"
                 }
               >
-                <span className={message.failed ? "text-[15px] leading-snug text-[#9f2417]" : "text-[15px] leading-snug text-white"}>
+                <span
+                  className={
+                    message.failed
+                      ? "min-w-0 flex-1 break-words text-[15px] leading-snug text-[#9f2417]"
+                      : "min-w-0 flex-1 break-words text-[15px] leading-snug text-white"
+                  }
+                >
                   {message.text}
                 </span>
                 <span className={message.failed ? "shrink-0 text-[11px] leading-snug text-[#9f2417]/75" : "shrink-0 text-[11px] leading-snug text-white/75"}>
@@ -458,9 +464,9 @@ function ChatView({
             <div key={message.id} className="mb-3 flex items-start gap-2">
               <Avatar spec={message.avatar} size={36} />
               <div className="min-w-0">
-                <p className="mb-1 text-[15px] font-semibold text-[var(--zx-ink)]">{message.authorName}</p>
-                <div className="flex max-w-[78%] items-end gap-2 rounded-2xl rounded-tl-md bg-[var(--zx-surface)] px-3.5 py-2">
-                  <span className="text-[15px] leading-snug text-[var(--zx-ink)]">{message.text}</span>
+                <p className="mb-1 truncate text-[15px] font-semibold text-[var(--zx-ink)]">{message.authorName}</p>
+                <div className="flex min-w-0 max-w-[78%] items-end gap-2 rounded-2xl rounded-tl-md bg-[var(--zx-surface)] px-3.5 py-2">
+                  <span className="min-w-0 flex-1 break-words text-[15px] leading-snug text-[var(--zx-ink)]">{message.text}</span>
                   <span className="shrink-0 text-[11px] leading-snug text-[var(--zx-faint)]">{message.time}</span>
                 </div>
               </div>

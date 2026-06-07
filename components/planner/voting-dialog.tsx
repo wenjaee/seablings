@@ -10,6 +10,9 @@ type Vote = "up" | "down";
 const CARD_TINTS = ["#FFE8CC", "#E8F4FF", "#FFE8E8"];
 const SWIPE_THRESHOLD = 90;
 const FLY_MS = 280;
+const SWIPE_EXIT_DISTANCE = "clamp(200px, 90vw, 320px)";
+const DECK_HEIGHT = "min(270px, 73vw)";
+const DECK_IMAGE_HEIGHT = "min(130px, 38vw)";
 
 function getRecommendationName(recommendation: PlannerRecommendationCard): string {
   return (
@@ -56,9 +59,9 @@ function getMapsUrl(recommendation: PlannerRecommendationCard): string {
 function cardTransform(pos: number, dragX: number, leavingDir: Vote | null): string {
   if (pos === 0) {
     if (leavingDir) {
-      const x = leavingDir === "up" ? 460 : -460;
+      const x = leavingDir === "up" ? SWIPE_EXIT_DISTANCE : `calc(-1 * ${SWIPE_EXIT_DISTANCE})`;
       const rotate = leavingDir === "up" ? 24 : -24;
-      return `translateX(${x}px) rotate(${rotate}deg)`;
+      return `translateX(${x}) rotate(${rotate}deg)`;
     }
     return `translateX(${dragX}px) rotate(${dragX * 0.04}deg)`;
   }
@@ -192,7 +195,7 @@ export function PlannerVotingSheet({
         />
       ) : (
         <>
-          <div className="relative mx-auto mt-5 h-[270px] w-full">
+          <div className="relative mx-auto mt-5 w-full overflow-hidden" style={{ height: DECK_HEIGHT }}>
             {recommendations.map((recommendation, index) => {
               const pos = index - cursor;
               if (pos < 0 || pos > 2) {
@@ -302,8 +305,8 @@ function DeckCard({
       onPointerUp={onPointerUp}
     >
       <div
-        className="relative grid h-[170px] place-items-center text-[64px]"
-        style={{ background: CARD_TINTS[index % CARD_TINTS.length] }}
+        className="relative grid place-items-center text-[64px]"
+        style={{ background: CARD_TINTS[index % CARD_TINTS.length], height: DECK_IMAGE_HEIGHT }}
       >
         {recommendation.emoji ?? "📍"}
         {pos === 0 ? (
@@ -336,17 +339,17 @@ function DeckCard({
       </div>
 
       <div className="px-4 py-3">
-        <div className="mb-1 flex items-center gap-2">
-          <p className="text-[18px] font-extrabold text-[var(--zx-ink)]">{getRecommendationName(recommendation)}</p>
+        <div className="mb-1 flex min-w-0 items-center gap-2">
+          <p className="min-w-0 flex-1 break-words text-[18px] font-extrabold text-[var(--zx-ink)]">{getRecommendationName(recommendation)}</p>
           <span
-            className="rounded-full px-2 py-0.5 text-[11px] font-bold"
+            className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold"
             style={{ background: "var(--zx-brand-soft)", color: "var(--zx-brand-deep)" }}
           >
             {getBudgetLabel(recommendation)}
           </span>
         </div>
-        {getAddress(recommendation) ? <p className="text-[13px] text-[var(--zx-muted)]">{getAddress(recommendation)}</p> : null}
-        <div className="mt-1 flex items-center gap-2 text-[13px]">
+        {getAddress(recommendation) ? <p className="break-words text-[13px] text-[var(--zx-muted)]">{getAddress(recommendation)}</p> : null}
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-[13px]">
           {mapsUrl ? (
             <a
               href={mapsUrl}

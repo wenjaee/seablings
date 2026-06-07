@@ -150,7 +150,7 @@ export function ChatListScreen() {
 
   return (
     <PhoneShell>
-      <main className="zx-hide-scroll flex-1 overflow-y-auto px-5 pt-2">
+      <main className="zx-hide-scroll flex-1 overflow-y-auto px-4 pt-2">
         <svg width={0} height={0} className="absolute">
           <defs>
             <linearGradient id="zxBell" x1="0" y1="0" x2="0" y2="1">
@@ -160,10 +160,10 @@ export function ChatListScreen() {
           </defs>
         </svg>
 
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-[30px] font-black tracking-tight text-[var(--zx-ink)]">ZYMIX</h1>
-            <p className="text-[14px] text-[var(--zx-muted)]">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-[30px] font-black tracking-tight text-[var(--zx-ink)]">ZYMIX</h1>
+            <p className="truncate text-[14px] text-[var(--zx-muted)]">
               {persona ? `Logged in as ${persona.name}` : "Checking session..."}
             </p>
           </div>
