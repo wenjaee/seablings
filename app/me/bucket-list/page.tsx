@@ -54,9 +54,9 @@ export default async function BucketListLandingPage() {
         </div>
 
         {populated.length === 0 ? (
-          <div className="flex-1 rounded-3xl bg-[#f5efe6]"><EmptyState /></div>
+          <div className="zx-dot-paper flex-1 rounded-3xl"><EmptyState /></div>
         ) : (
-          <div className="flex-1 rounded-3xl bg-[#f5efe6] px-4 pb-8 pt-6">
+          <div className="zx-dot-paper flex-1 rounded-3xl px-4 pb-8 pt-6">
             <div className="flex gap-3">
               <div className="flex flex-1 flex-col gap-2">
                 {left.map((cat) => (

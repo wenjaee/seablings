@@ -71,6 +71,12 @@ a {
   scrollbar-width: none;
 }
 
+.zx-dot-paper {
+  background-color: #f5efe6;
+  background-image: radial-gradient(circle, #c4ae96 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
 .zx-hide-scroll::-webkit-scrollbar {
   display: none;
 }
