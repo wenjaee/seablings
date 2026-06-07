@@ -192,7 +192,7 @@ function Checkmark({ visited }: { visited: boolean }) {
         <svg width="10" height="8" viewBox="0 0 10 8" fill="none" aria-hidden>
           <path
             d="M1 4L3.5 6.5L9 1"
-            stroke="var(--zx-brand-deep)"
+            stroke="black"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -314,7 +314,7 @@ function ItemSheet({
               className="flex h-9 w-9 items-center justify-center rounded-full"
               style={{ background: "var(--zx-brand)" }}
             >
-              <Check size={18} strokeWidth={2.5} color="white" />
+              <Check size={18} strokeWidth={2.5} color="black" />
             </span>
           ) : (
             <span
