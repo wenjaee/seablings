@@ -9,15 +9,12 @@ export type BucketItemStatus = "candidate" | "saved" | "completed" | "rejected" 
 export type BucketItemDateType = "anytime" | "one_off" | "limited_run" | "scheduled";
 
 export const bucketCategoryValues = [
-  "bakery",
   "cafe",
   "restaurant",
-  "bar",
   "nightlife",
   "activity",
   "culture",
   "shopping",
-  "other"
 ] as const;
 
 export type BucketCategory = (typeof bucketCategoryValues)[number];
@@ -84,6 +81,7 @@ export type BucketItem = {
   priceEstimate: PriceEstimateTier;
   estimatedCost: number;
   openingHours?: string;
+  openingHoursRows?: Array<{ day: string; hours: string | null }>;
   websiteUrl?: string;
   sourceUrl?: string;
   sourceType: SourcePlatform;
