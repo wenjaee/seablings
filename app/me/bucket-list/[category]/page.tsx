@@ -36,8 +36,8 @@ export default async function CategoryListPage({
 
   return (
     <PhoneShell>
-      <main className="zx-hide-scroll flex-1 overflow-y-auto px-5 pt-1">
-        <div className="flex items-center gap-3 pb-5 pt-1">
+      <main className="zx-hide-scroll flex-1 overflow-x-hidden overflow-y-auto px-5 pt-1">
+        <div className="flex min-w-0 items-center gap-3 pb-5 pt-1">
           <Link
             href="/me/bucket-list"
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--zx-surface)]"
@@ -45,7 +45,7 @@ export default async function CategoryListPage({
             <ChevronLeft size={18} className="text-[var(--zx-ink)]" />
           </Link>
           <span className="text-[22px] leading-none">{meta.emoji}</span>
-          <h1 className="text-[22px] font-extrabold tracking-tight text-[var(--zx-ink)]">
+          <h1 className="min-w-0 flex-1 break-words text-[22px] font-extrabold tracking-tight text-[var(--zx-ink)]">
             {meta.name}
           </h1>
           <span className="ml-auto text-[13px] text-[var(--zx-muted)]">
