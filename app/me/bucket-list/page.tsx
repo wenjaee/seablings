@@ -90,23 +90,23 @@ function StickerCard({
   return (
     <Link
       href={`/me/bucket-list/${cat}` as Route}
-      className="flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-center gap-1 transition-transform active:scale-95"
+      className="flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-center gap-2.5 transition-transform active:scale-95"
     >
       {meta.sticker ? (
         <span
-          className="grid min-h-0 w-full max-w-[132px] flex-1 place-items-center overflow-visible"
+          className="grid h-[112px] w-full max-w-[132px] place-items-center overflow-visible"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={`/stickers/${meta.sticker}.png`}
             alt={meta.name}
-            className="max-h-[86%] max-w-[86%] object-contain"
+            className="max-h-full max-w-full object-contain"
             style={{ rotate: `${meta.rotation}deg` }}
           />
         </span>
       ) : (
         <span
-          className="flex min-h-0 w-full max-w-[132px] flex-1 items-center justify-center text-[54px]"
+          className="flex h-[112px] w-full max-w-[132px] items-center justify-center text-[54px]"
           style={{ rotate: `${meta.rotation}deg` }}
         >
           {meta.emoji}
