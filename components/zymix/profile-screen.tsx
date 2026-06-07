@@ -50,38 +50,38 @@ export function ProfileScreen() {
 
   return (
     <PhoneShell>
-      <main className="zx-hide-scroll flex-1 overflow-y-auto px-5 pt-1">
-        <h1 className="text-[34px] font-extrabold tracking-tight text-[var(--zx-ink)]">Me</h1>
+      <main className="zx-hide-scroll flex-1 overflow-y-auto px-4 pt-1 sm:px-5">
+        <h1 className="text-[30px] font-extrabold tracking-tight text-[var(--zx-ink)]">Me</h1>
 
-        {isLoading ? <p className="mt-5 text-[15px] text-[var(--zx-muted)]">Loading profile...</p> : null}
-        {error ? <p className="mt-5 text-[15px] text-[#d94c3d]">{error}</p> : null}
+        {isLoading ? <p className="mt-4 text-[14px] text-[var(--zx-muted)]">Loading profile...</p> : null}
+        {error ? <p className="mt-4 text-[14px] text-[#d94c3d]">{error}</p> : null}
 
         {persona ? (
           <>
             <section className="mt-5 flex items-center gap-4">
-              <Avatar spec={persona.avatar} size={76} />
+              <Avatar spec={persona.avatar} size={64} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[26px] font-extrabold leading-tight text-[var(--zx-ink)]">{persona.name}</p>
-                <p className="truncate text-[16px] text-[var(--zx-muted)]">{persona.handle}</p>
+                <p className="truncate text-[22px] font-extrabold leading-tight text-[var(--zx-ink)]">{persona.name}</p>
+                <p className="truncate text-[14px] text-[var(--zx-muted)]">{persona.handle}</p>
               </div>
               <button
                 type="button"
                 aria-label="QR code"
-                className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--zx-surface)]"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--zx-surface)]"
               >
-                <QrCode size={22} className="text-[var(--zx-ink)]" />
+                <QrCode size={18} className="text-[var(--zx-ink)]" />
               </button>
             </section>
 
-            <p className="mt-5 text-[16px] text-[var(--zx-muted)]">
+            <p className="mt-4 text-[14px] text-[var(--zx-muted)]">
               {persona.followers} followers · {persona.following} following
             </p>
 
             <section className="mt-5 flex">
               {persona.stats.map((stat, index) => (
                 <div key={stat.label} className={index === 0 ? "flex-1 pr-4" : "flex-1 border-l border-[var(--zx-line)] px-4"}>
-                  <p className="text-[26px] font-extrabold leading-none text-[var(--zx-ink)]">{stat.value}</p>
-                  <p className="mt-1.5 text-[15px] text-[var(--zx-ink)]">{stat.label}</p>
+                  <p className="text-[20px] font-extrabold leading-none text-[var(--zx-ink)]">{stat.value}</p>
+                  <p className="mt-1 text-[13px] text-[var(--zx-ink)]">{stat.label}</p>
                 </div>
               ))}
             </section>
@@ -91,59 +91,62 @@ export function ProfileScreen() {
                 <button
                   key={card.label}
                   type="button"
-                  className="flex flex-col items-center gap-3 rounded-2xl bg-[var(--zx-surface)] px-1 pb-4 pt-5"
+                  className="flex flex-col items-center gap-2 rounded-2xl bg-[var(--zx-surface)] px-1 py-4"
                 >
-                  <span className="text-[34px] leading-none">{card.emoji}</span>
-                  <span className="whitespace-nowrap text-[13px] font-semibold text-[var(--zx-ink)]">{card.label}</span>
+                  <span className="text-[28px] leading-none">{card.emoji}</span>
+                  <span className="whitespace-nowrap text-[12px] font-semibold text-[var(--zx-ink)]">{card.label}</span>
                 </button>
               ))}
             </section>
 
-            <button type="button" className="mt-5 flex w-full items-center gap-4 rounded-2xl bg-[var(--zx-surface)] px-4 py-4">
-              <Wallet size={24} className="text-[var(--zx-ink)]" />
-              <span className="text-[18px] font-semibold text-[var(--zx-ink)]">Wallet</span>
-              <span className="ml-auto rounded-md bg-[#fdeede] px-2 py-1 text-[14px] font-bold italic text-[var(--zx-warn)]">
+            <button type="button" className="mt-5 flex w-full items-center gap-3 rounded-2xl bg-[var(--zx-surface)] px-3.5 py-3">
+              <Wallet size={21} className="text-[var(--zx-ink)]" />
+              <span className="text-[16px] font-semibold text-[var(--zx-ink)]">Wallet</span>
+              <span className="ml-auto rounded-md bg-[#fdeede] px-2 py-0.5 text-[12px] font-bold italic text-[var(--zx-warn)]">
                 {persona.walletVerified ? "Verified" : "Unverified"}
               </span>
-              <ChevronRight size={20} className="text-[var(--zx-faint)]" />
+              <ChevronRight size={18} className="text-[var(--zx-faint)]" />
             </button>
 
-            <Link href={"/bucket-list" as Route} className="mt-3 flex w-full items-center gap-4 rounded-2xl bg-[var(--zx-surface)] px-4 py-4">
-              <ListChecks size={24} className="text-[var(--zx-ink)]" />
-              <span className="text-[18px] font-semibold text-[var(--zx-ink)]">Bucket List</span>
-              <ChevronRight size={20} className="ml-auto text-[var(--zx-faint)]" />
+            <Link
+              href={"/bucket-list" as Route}
+              className="mt-3 flex w-full items-center gap-3 rounded-2xl bg-[var(--zx-surface)] px-3.5 py-3"
+            >
+              <ListChecks size={21} className="text-[var(--zx-ink)]" />
+              <span className="text-[16px] font-semibold text-[var(--zx-ink)]">Bucket List</span>
+              <ChevronRight size={18} className="ml-auto text-[var(--zx-faint)]" />
             </Link>
 
             <section className="mt-4 rounded-2xl bg-[var(--zx-surface)] px-4">
               <button type="button" className="flex w-full items-center gap-4 py-4">
-                <Orbit size={24} className="text-[var(--zx-ink)]" />
-                <span className="text-[18px] font-semibold text-[var(--zx-ink)]">The Mix</span>
+                <Orbit size={21} className="text-[var(--zx-ink)]" />
+                <span className="text-[16px] font-semibold text-[var(--zx-ink)]">The Mix</span>
                 <ChevronRight size={20} className="ml-auto text-[var(--zx-faint)]" />
               </button>
               <div className="h-px bg-[var(--zx-line)]" />
               <button type="button" className="flex w-full items-center gap-4 py-4">
-                <Users size={24} className="text-[var(--zx-ink)]" />
-                <span className="text-[18px] font-semibold text-[var(--zx-ink)]">My Friends</span>
+                <Users size={21} className="text-[var(--zx-ink)]" />
+                <span className="text-[16px] font-semibold text-[var(--zx-ink)]">My Friends</span>
                 <span className="ml-auto flex items-center -space-x-3">
                   {friends.map((friend, index) => (
-                    <Avatar key={index} spec={friend} size={34} className="ring-2 ring-[var(--zx-surface)]" />
+                    <Avatar key={index} spec={friend} size={30} className="ring-2 ring-[var(--zx-surface)]" />
                   ))}
                 </span>
-                <ChevronRight size={20} className="text-[var(--zx-faint)]" />
+                <ChevronRight size={18} className="text-[var(--zx-faint)]" />
               </button>
             </section>
 
             <section className="mt-4 rounded-2xl bg-[var(--zx-surface)] px-4">
               <button type="button" className="flex w-full items-center gap-4 py-4">
-                <UserCog size={24} className="text-[var(--zx-ink)]" />
-                <span className="text-[18px] font-semibold text-[var(--zx-ink)]">Account</span>
+                <UserCog size={21} className="text-[var(--zx-ink)]" />
+                <span className="text-[16px] font-semibold text-[var(--zx-ink)]">Account</span>
                 <ChevronRight size={20} className="ml-auto text-[var(--zx-faint)]" />
               </button>
               <div className="h-px bg-[var(--zx-line)]" />
               <button type="button" className="flex w-full items-center gap-4 py-4">
-                <Lock size={24} className="text-[var(--zx-ink)]" />
-                <span className="text-[18px] font-semibold text-[var(--zx-ink)]">Privacy</span>
-                <ChevronRight size={20} className="ml-auto text-[var(--zx-faint)]" />
+                <Lock size={21} className="text-[var(--zx-ink)]" />
+                <span className="text-[16px] font-semibold text-[var(--zx-ink)]">Privacy</span>
+                <ChevronRight size={18} className="ml-auto text-[var(--zx-faint)]" />
               </button>
             </section>
 
@@ -151,13 +154,13 @@ export function ProfileScreen() {
               type="button"
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-[#ffd8d3] bg-white px-4 py-3 text-[16px] font-semibold text-[#d94c3d] disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-[#ffd8d3] bg-white px-3.5 py-2.5 text-[14px] font-semibold text-[#d94c3d] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <LogOut size={18} />
+              <LogOut size={16} />
               {isLoggingOut ? "Logging out..." : "Log out"}
             </button>
 
-            {logoutError ? <p className="mt-3 text-center text-[14px] text-[#d94c3d]">{logoutError}</p> : null}
+            {logoutError ? <p className="mt-3 text-center text-[13px] text-[#d94c3d]">{logoutError}</p> : null}
           </>
         ) : null}
 

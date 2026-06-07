@@ -3,13 +3,13 @@ import { BatteryMedium, SignalHigh, Wifi } from "lucide-react";
 
 function StatusBar() {
   return (
-    <div className="relative flex h-12 shrink-0 items-center justify-between px-7 text-[var(--zx-ink)]">
+    <div className="relative flex h-12 shrink-0 items-center justify-between px-4 sm:px-7 text-[var(--zx-ink)]">
       <span className="text-[15px] font-semibold tabular-nums tracking-tight">9:41</span>
-      <span aria-hidden className="absolute left-1/2 top-2.5 h-7 w-[88px] -translate-x-1/2 rounded-full bg-black" />
+      <span aria-hidden className="absolute left-1/2 top-2.5 h-7 w-[82px] -translate-x-1/2 rounded-full bg-black sm:w-[88px]" />
       <span className="flex items-center gap-1.5">
-        <SignalHigh size={18} />
-        <Wifi size={18} />
-        <BatteryMedium size={24} />
+        <SignalHigh size={16} />
+        <Wifi size={16} />
+        <BatteryMedium size={21} />
       </span>
     </div>
   );
