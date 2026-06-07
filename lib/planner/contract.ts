@@ -29,37 +29,54 @@ export interface PlannerClient {
   subscribe(sessionId: string, callback: (snapshot: PlannerSnapshot) => void): () => void;
 }
 
-export type CriteriaQuestion = {
-  id: "availability" | "budget" | "vetoes";
-  /** Whether the user may pick multiple preset options (vetoes) or one. */
-  multiSelect: boolean;
-  prompt: string;
-  options: string[];
-  /** Placeholder for the free-text "Type your answer…" option (D). */
-  freeTextPlaceholder: string;
-};
+export type CriteriaQuestion =
+  | {
+      id: "availability";
+      kind: "choice";
+      prompt: string;
+      /** Preset options shown as tappable buttons; a free-text row follows. */
+      options: string[];
+      freeTextPlaceholder: string;
+    }
+  | {
+      id: "budget";
+      kind: "slider";
+      prompt: string;
+      min: number;
+      max: number;
+      step: number;
+      /** Currency/label prefix, e.g. "£". The max value is shown as "{unit}{max}+". */
+      unit: string;
+    }
+  | {
+      id: "vetoes";
+      kind: "freetext";
+      prompt: string;
+      freeTextPlaceholder: string;
+    };
 
 /** PRD §5.2 — the 3 criteria questions, presented in sequence. */
 export const CRITERIA_QUESTIONS: CriteriaQuestion[] = [
   {
     id: "availability",
-    multiSelect: false,
+    kind: "choice",
     prompt: "When are you available?",
-    options: ["Anytime this weekend", "After office hours", "Whenever"],
+    options: ["Whenever"],
     freeTextPlaceholder: "Type your answer..."
   },
   {
     id: "budget",
-    multiSelect: false,
+    kind: "slider",
     prompt: "What's your budget?",
-    options: ["Under £10", "£10–20", "£20+"],
-    freeTextPlaceholder: "Type your answer..."
+    min: 0,
+    max: 40,
+    step: 5,
+    unit: "£"
   },
   {
     id: "vetoes",
-    multiSelect: true,
+    kind: "freetext",
     prompt: "Anything to avoid?",
-    options: ["No seafood", "Halal only", "No alcohol"],
     freeTextPlaceholder: "Type your answer..."
   }
 ];

@@ -37,7 +37,8 @@ export type Vote = {
  */
 export type CriteriaResponse = {
   availability: string;
-  budget: string;
+  /** Slider value; the max bound represents "and above". */
+  budget: number;
   vetoes: string[];
 };
 

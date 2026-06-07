@@ -5,27 +5,18 @@ import { useState } from "react";
 import { CRITERIA_QUESTIONS } from "@/lib/planner/contract";
 import type { CriteriaResponse } from "@/lib/planner/types";
 
-const OPTION_LABELS = ["A", "B", "C"];
-
 export function CriteriaDialog({ onSubmit }: { onSubmit: (response: CriteriaResponse) => void }) {
   const [step, setStep] = useState(0);
   const [availability, setAvailability] = useState("");
-  const [budget, setBudget] = useState("");
-  const [vetoes, setVetoes] = useState<string[]>([]);
-  const [vetoFreeText, setVetoFreeText] = useState("");
+  const [budget, setBudget] = useState(20);
+  const [vetoesText, setVetoesText] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const question = CRITERIA_QUESTIONS[step];
   const isLast = step === CRITERIA_QUESTIONS.length - 1;
 
-  const singleValue = question.id === "availability" ? availability : budget;
-  const setSingleValue = question.id === "availability" ? setAvailability : setBudget;
-
-  const canAdvance = question.id === "vetoes" ? true : singleValue.trim().length > 0;
-
-  function toggleVeto(option: string) {
-    setVetoes((prev) => (prev.includes(option) ? prev.filter((v) => v !== option) : [...prev, option]));
-  }
+  // Budget (slider) and vetoes (free text) are optional; availability needs a value.
+  const canAdvance = question.kind === "choice" ? availability.trim().length > 0 : true;
 
   function handleNext() {
     if (!canAdvance || submitting) {
@@ -36,11 +27,11 @@ export function CriteriaDialog({ onSubmit }: { onSubmit: (response: CriteriaResp
       return;
     }
     setSubmitting(true);
-    const trimmedFreeText = vetoFreeText.trim();
+    const trimmedVetoes = vetoesText.trim();
     onSubmit({
       availability,
       budget,
-      vetoes: trimmedFreeText ? [...vetoes, trimmedFreeText] : vetoes
+      vetoes: trimmedVetoes ? [trimmedVetoes] : []
     });
   }
 
@@ -66,44 +57,64 @@ export function CriteriaDialog({ onSubmit }: { onSubmit: (response: CriteriaResp
       </p>
 
       <div className="flex flex-col gap-2">
-        {question.options.map((option, index) => {
-          const selected =
-            question.id === "vetoes" ? vetoes.includes(option) : singleValue === option;
-          return (
-            <button
-              key={option}
-              type="button"
-              onClick={() => (question.id === "vetoes" ? toggleVeto(option) : setSingleValue(option))}
-              className="flex items-center gap-2.5 rounded-2xl px-3.5 py-3 text-left text-[15px] font-semibold transition-colors"
-              style={{
-                background: selected ? "var(--zx-brand-soft)" : "var(--zx-surface)",
-                color: "var(--zx-ink)"
-              }}
-            >
-              <span
-                className="grid h-6 w-7 shrink-0 place-items-center rounded-md text-[12px] font-bold"
-                style={{
-                  background: selected ? "var(--zx-brand)" : "var(--zx-line)",
-                  color: selected ? "var(--zx-brand-deep)" : "var(--zx-muted)"
-                }}
-              >
-                {OPTION_LABELS[index]}
-              </span>
-              {option}
-            </button>
-          );
-        })}
+        {question.kind === "choice" ? (
+          <>
+            {question.options.map((option, index) => {
+              const selected = availability === option;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setAvailability(option)}
+                  className="flex items-center gap-2.5 rounded-2xl px-3.5 py-3 text-left text-[15px] font-semibold transition-colors"
+                  style={{ background: selected ? "var(--zx-brand-soft)" : "var(--zx-surface)", color: "var(--zx-ink)" }}
+                >
+                  <OptionBadge label={LETTERS[index]} active={selected} />
+                  {option}
+                </button>
+              );
+            })}
+            <FreeTextRow
+              label={LETTERS[question.options.length]}
+              value={question.options.includes(availability) ? "" : availability}
+              onChange={setAvailability}
+              placeholder={question.freeTextPlaceholder}
+            />
+          </>
+        ) : null}
 
-        {/* Free-text option (D) */}
-        {question.id === "vetoes" ? (
-          <FreeTextRow value={vetoFreeText} onChange={setVetoFreeText} placeholder={question.freeTextPlaceholder} />
-        ) : (
-          <FreeTextRow
-            value={question.options.includes(singleValue) ? "" : singleValue}
-            onChange={setSingleValue}
-            placeholder={question.freeTextPlaceholder}
-          />
-        )}
+        {question.kind === "slider" ? (
+          <div className="rounded-2xl bg-[var(--zx-surface)] px-4 py-5">
+            <p className="mb-4 text-center text-[26px] font-extrabold text-[var(--zx-ink)]">
+              {budget >= question.max ? `${question.unit}${question.max}+` : `${question.unit}${budget}`}
+            </p>
+            <input
+              type="range"
+              min={question.min}
+              max={question.max}
+              step={question.step}
+              value={budget}
+              onChange={(event) => setBudget(Number(event.target.value))}
+              aria-label="Budget"
+              className="w-full"
+              style={{ accentColor: "var(--zx-brand)" }}
+            />
+            <div className="mt-1 flex justify-between text-[12px] font-medium text-[var(--zx-muted)]">
+              <span>
+                {question.unit}
+                {question.min}
+              </span>
+              <span>
+                {question.unit}
+                {question.max}+
+              </span>
+            </div>
+          </div>
+        ) : null}
+
+        {question.kind === "freetext" ? (
+          <FreeTextRow value={vetoesText} onChange={setVetoesText} placeholder={question.freeTextPlaceholder} />
+        ) : null}
       </div>
 
       <button
@@ -119,32 +130,40 @@ export function CriteriaDialog({ onSubmit }: { onSubmit: (response: CriteriaResp
   );
 }
 
+const LETTERS = ["A", "B", "C", "D"];
+
+function OptionBadge({ label, active }: { label: string; active: boolean }) {
+  return (
+    <span
+      className="grid h-6 w-7 shrink-0 place-items-center rounded-md text-[12px] font-bold"
+      style={{
+        background: active ? "var(--zx-brand)" : "var(--zx-line)",
+        color: active ? "var(--zx-brand-deep)" : "var(--zx-muted)"
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
 function FreeTextRow({
   value,
   onChange,
-  placeholder
+  placeholder,
+  label
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
+  label?: string;
 }) {
   const active = value.trim().length > 0;
   return (
     <div
       className="flex items-center gap-2.5 rounded-2xl px-3.5 py-3"
-      style={{
-        background: active ? "var(--zx-brand-soft)" : "var(--zx-surface)"
-      }}
+      style={{ background: active ? "var(--zx-brand-soft)" : "var(--zx-surface)" }}
     >
-      <span
-        className="grid h-6 w-7 shrink-0 place-items-center rounded-md text-[12px] font-bold"
-        style={{
-          background: active ? "var(--zx-brand)" : "var(--zx-line)",
-          color: active ? "var(--zx-brand-deep)" : "var(--zx-muted)"
-        }}
-      >
-        D
-      </span>
+      {label ? <OptionBadge label={label} active={active} /> : null}
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
