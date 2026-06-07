@@ -90,15 +90,15 @@ export function LoginScreen() {
 
   return (
     <PhoneShell>
-      <main className="zx-hide-scroll flex-1 overflow-y-auto px-5 pt-5">
-        <div className="rounded-[28px] bg-[var(--zx-surface)] px-5 py-5 shadow-[0_20px_48px_rgba(0,0,0,0.08)]">
+      <main className="zx-hide-scroll flex-1 overflow-y-auto px-4 pt-5 sm:px-5">
+        <div className="rounded-[24px] bg-[var(--zx-surface)] px-4 py-4 shadow-[0_20px_48px_rgba(0,0,0,0.08)] sm:rounded-[28px] sm:px-5 sm:py-5">
           <div className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--zx-brand-soft)] text-[var(--zx-brand-deep)]">
-              <LockKeyhole size={22} />
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-[var(--zx-brand-soft)] text-[var(--zx-brand-deep)] sm:h-12 sm:w-12">
+              <LockKeyhole size={19} />
             </span>
             <div>
-              <h1 className="text-[28px] font-black tracking-tight text-[var(--zx-ink)]">ZYMIX</h1>
-              <p className="text-[14px] text-[var(--zx-muted)]">Demo PIN login for SEAblings judges and teammates.</p>
+              <h1 className="text-[24px] font-black tracking-tight text-[var(--zx-ink)]">ZYMIX</h1>
+              <p className="text-[13px] text-[var(--zx-muted)]">Demo PIN login for SEAblings judges and teammates.</p>
             </div>
           </div>
 
@@ -113,15 +113,15 @@ export function LoginScreen() {
                   onClick={() => setSelectedPersonaId(persona.id)}
                   className={
                     isActive
-                      ? "rounded-2xl border-2 border-[var(--zx-brand)] bg-white px-3 py-3 text-left shadow-[0_10px_20px_rgba(53,201,60,0.14)]"
-                      : "rounded-2xl border-2 border-transparent bg-white px-3 py-3 text-left"
+                      ? "rounded-2xl border-2 border-[var(--zx-brand)] bg-white px-2.5 py-2.5 text-left shadow-[0_10px_20px_rgba(53,201,60,0.14)]"
+                      : "rounded-2xl border-2 border-transparent bg-white px-2.5 py-2.5 text-left"
                   }
                 >
                   <div className="flex items-center gap-3">
-                    <Avatar spec={persona.avatar} size={44} />
+                    <Avatar spec={persona.avatar} size={40} />
                     <div className="min-w-0">
-                      <p className="truncate text-[16px] font-bold text-[var(--zx-ink)]">{persona.name}</p>
-                      <p className="truncate text-[13px] text-[var(--zx-muted)]">{persona.handle}</p>
+                      <p className="truncate text-[15px] font-bold text-[var(--zx-ink)]">{persona.name}</p>
+                      <p className="truncate text-[12px] text-[var(--zx-muted)]">{persona.handle}</p>
                     </div>
                   </div>
                 </button>
@@ -131,9 +131,9 @@ export function LoginScreen() {
 
           <form onSubmit={handleSubmit} className="mt-5">
             <label className="block">
-              <span className="text-[14px] font-semibold text-[var(--zx-ink)]">PIN</span>
-              <div className="mt-2 flex items-center gap-3 rounded-2xl bg-white px-4 py-3">
-                <KeyRound size={20} className="text-[var(--zx-muted)]" />
+              <span className="text-[13px] font-semibold text-[var(--zx-ink)]">PIN</span>
+              <div className="mt-2 flex items-center gap-2.5 rounded-2xl bg-white px-3.5 py-2.5 sm:gap-3">
+                <KeyRound size={18} className="text-[var(--zx-muted)]" />
                 <input
                   name="pin"
                   value={pin}
@@ -143,13 +143,13 @@ export function LoginScreen() {
                   autoComplete="one-time-code"
                   placeholder="Enter PIN"
                   aria-label="PIN"
-                  className="min-w-0 flex-1 bg-transparent text-[18px] tracking-[0.3em] text-[var(--zx-ink)] outline-none placeholder:tracking-normal placeholder:text-[var(--zx-muted)]"
+                  className="min-w-0 flex-1 bg-transparent text-[16px] tracking-[0.3em] text-[var(--zx-ink)] outline-none placeholder:tracking-normal placeholder:text-[var(--zx-muted)] sm:text-[18px]"
                 />
               </div>
             </label>
 
             {error ? (
-              <p role="alert" className="mt-3 rounded-2xl bg-[#fff1ef] px-4 py-3 text-[14px] font-medium text-[#d94c3d]">
+              <p role="alert" className="mt-3 rounded-2xl bg-[#fff1ef] px-3.5 py-2.5 text-[13px] font-medium text-[#d94c3d] sm:px-4 sm:py-3 sm:text-[14px]">
                 {error}
               </p>
             ) : null}
@@ -157,7 +157,7 @@ export function LoginScreen() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-5 w-full rounded-full bg-[var(--zx-brand)] px-4 py-3 text-[16px] font-bold text-white shadow-[0_16px_28px_rgba(53,201,60,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-5 w-full rounded-full bg-[var(--zx-brand)] px-4 py-2.5 text-[15px] font-bold text-white shadow-[0_16px_28px_rgba(53,201,60,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? "Signing in..." : `Continue as ${loginPersonas.find((persona) => persona.id === selectedPersonaId)?.name ?? "persona"}`}
             </button>
