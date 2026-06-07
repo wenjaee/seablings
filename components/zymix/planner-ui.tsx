@@ -1023,6 +1023,10 @@ export function PlannerThread({
   onRemovePlan?: () => Promise<void> | void;
   isRemovingPlan?: boolean;
 }) {
+  if (session.status === "canceled") {
+    return null;
+  }
+
   const isCollecting = session.status === "collecting";
   const isCompleted = session.status === "completed";
   const hasSubmittedCriteria = Boolean(session.criteriaByUserId[currentPersonaId]);
