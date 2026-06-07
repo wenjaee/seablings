@@ -29,6 +29,15 @@ export function Avatar({ spec, size = 48, className }: AvatarProps) {
     );
   }
 
+  if (spec.kind === "image") {
+    return (
+      <span aria-hidden className={clsx(base, "block rounded-full bg-[var(--zx-surface)]", className)} style={style}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={spec.src} alt="" className="h-full w-full object-cover" />
+      </span>
+    );
+  }
+
   if (spec.kind === "tile") {
     return (
       <span

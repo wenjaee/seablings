@@ -2,6 +2,7 @@ import type { PersonaId } from "@/lib/domain";
 
 export type AvatarSpec =
   | { kind: "checker" }
+  | { kind: "image"; src: string }
   | { kind: "initials"; initials: string; bg: string; fg?: string }
   | { kind: "tile"; bg: string; emoji: string; rounded?: "lg" | "full" }
   | { kind: "speaker" };
@@ -122,6 +123,7 @@ const PERSONAS: ZymixPersona[] = [
 ];
 
 const PERSONA_MAP = Object.fromEntries(PERSONAS.map((persona) => [persona.id, persona])) as Record<ZymixPersonaId, ZymixPersona>;
+const SEABLINGS_AVATAR: AvatarSpec = { kind: "image", src: "/avatars/seablings-chat.jpg" };
 
 const DM_PREVIEWS: Partial<Record<ZymixPersonaId, string>> = {
   jeff: "Jeff: I can take Shoreditch side.",
@@ -193,7 +195,7 @@ export function getConversations(currentPersonaId: ZymixPersonaId): Conversation
       id: "seablings",
       name: "SEAblings",
       href: "/chat/seablings",
-      avatar: { kind: "checker" },
+      avatar: SEABLINGS_AVATAR,
       subtitle: "4 members",
       preview: "Praya: hi",
       time: "7h",
@@ -217,7 +219,7 @@ export function getThreadData(routeId: string, currentPersonaId: ZymixPersonaId)
       routeId,
       threadId: "group:seablings",
       name: "SEAblings",
-      avatar: { kind: "checker" },
+      avatar: SEABLINGS_AVATAR,
       subtitle: "4 members",
       dateLabel: "Today 12:07 PM",
       verified: true,
