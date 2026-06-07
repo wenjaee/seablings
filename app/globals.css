@@ -19,9 +19,9 @@
   --zx-muted: #8b8e96;
   --zx-faint: #b8bbc1;
   --zx-line: #ededf0;
-  --zx-brand: #35c93c;
-  --zx-brand-deep: #1faa36;
-  --zx-brand-soft: #d9f7df;
+  --zx-brand: #7FE202;
+  --zx-brand-deep: #5aab00;
+  --zx-brand-soft: #edf9c2;
   --zx-danger: #ff3b30;
   --zx-warn: #f5921e;
 }
@@ -69,6 +69,12 @@ a {
 .zx-hide-scroll {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+.zx-dot-paper {
+  background-color: #f5efe6;
+  background-image: radial-gradient(circle, #c4ae96 1px, transparent 1px);
+  background-size: 18px 18px;
 }
 
 .zx-hide-scroll::-webkit-scrollbar {

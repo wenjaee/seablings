@@ -31,6 +31,7 @@ import {
   seededRecommendations,
   seededZymixMessages
 } from "@/lib/fixtures";
+import { normalizePlaceCategory } from "@/lib/server/place-categories";
 import type {
   CreateZymixMessageInput,
   ListBucketItemFilters,
@@ -61,6 +62,7 @@ type BackendStore = {
   listBucketItems(filters?: ListBucketItemFilters): Promise<BucketItem[]>;
   createBucketItem(input: ManualBucketItemInput): Promise<BucketItem>;
   saveBucketItemEmbedding(input: BucketItemEmbeddingInput): Promise<void>;
+  getBucketItemById(id: string): Promise<BucketItem | null>;
   updateBucketItemStatus(id: string, status: BucketItemStatus): Promise<BucketItem | null>;
   updateBucketItemPhoto(id: string, input: BucketItemPhotoInput): Promise<BucketItem | null>;
   listZymixMessages(filters: ListZymixMessageFilters): Promise<ZymixMessage[]>;
@@ -316,6 +318,12 @@ function createDemoStore(): BackendStore {
         updatedAt: timestamp
       });
     },
+    async getBucketItemById(id) {
+      const state = getDemoState();
+      const item = state.bucketItems.find((candidate) => candidate.id === id);
+
+      return item ? { ...item } : null;
+    },
     async updateBucketItemStatus(id, status) {
       const state = getDemoState();
       const item = state.bucketItems.find((candidate) => candidate.id === id);
@@ -554,6 +562,16 @@ function createSupabaseStore(): BackendStore {
       if (error) {
         throw new Error(`Failed to save bucket item embedding: ${error.message}`);
       }
+    },
+    async getBucketItemById(id) {
+      await ensureSupabaseSeeded(client);
+
+      const { data, error } = await client.from("bucket_items").select("*").eq("id", id).maybeSingle();
+      if (error) {
+        throw new Error(`Failed to load bucket item: ${error.message}`);
+      }
+
+      return data ? mapBucketItemRowToDomain(data as BucketItemRow) : null;
     },
     async updateBucketItemStatus(id, status) {
       await ensureSupabaseSeeded(client);
@@ -1461,14 +1479,14 @@ function scorePlannerCandidate(
 
   if (aggregateCriteria.availabilitySummary.toLowerCase().includes("evening") && !item.openingHours) {
     warnings.push("Opening time details are missing; verify it works for evening plans.");
-  } else if (aggregateCriteria.availabilitySummary.toLowerCase().includes("tonight") && item.category !== "bar" && item.category !== "nightlife") {
+  } else if (aggregateCriteria.availabilitySummary.toLowerCase().includes("tonight") && item.category !== "nightlife") {
     warnings.push("Tonight preference might be less ideal for this place type.");
   }
 
   if (item.category === "culture" || item.category === "activity" || item.category === "shopping") {
     score += 4;
     reasons.push("Gives the group a non-standard plan option beyond a standard dinner.");
-  } else if (item.category === "restaurant" || item.category === "bakery") {
+  } else if (item.category === "restaurant" || item.category === "cafe") {
     score += 2;
   }
 
@@ -1583,8 +1601,7 @@ function classifyPlannerVeto(
 
   if (
     normalized.includes("no alcohol") &&
-    (item.category === "bar" ||
-      item.category === "nightlife" ||
+    (item.category === "nightlife" ||
       /\b(cocktail|pub|club|alcohol|wine|beer|drinks)\b/.test(searchText))
   ) {
     return { hardConflict: true, warning: "Conflicts with a no-alcohol veto." };
@@ -1888,13 +1905,15 @@ function mapBucketItemDomainToRow(item: BucketItem): BucketItemRow {
 }
 
 function mapBucketItemRowToDomain(row: BucketItemRow): BucketItem {
+  const category = normalizePlaceCategory(row.category);
+
   return {
     id: row.id,
     userId: row.user_id as BucketItem["userId"],
     status: row.status as BucketItemStatus,
     dateType: row.date_type as BucketItemDateType,
     title: row.title,
-    category: row.category as BucketCategory,
+    category,
     description: row.description,
     whyInteresting: row.why_interesting,
     locationName: row.location_name,

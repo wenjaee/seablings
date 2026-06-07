@@ -1,15 +1,10 @@
-import { Suspense } from "react";
-
-import { BucketListScreen } from "@/components/zymix/bucket-list-screen";
+import type { Route } from "next";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "Bucket list · ZYMIX"
 };
 
 export default function BucketListPage() {
-  return (
-    <Suspense fallback={null}>
-      <BucketListScreen />
-    </Suspense>
-  );
+  redirect("/me/bucket-list" as Route);
 }

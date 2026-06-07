@@ -96,7 +96,7 @@ export function PlannerCriteriaSheet({
     <div className="rounded-t-[28px] bg-white px-5 pb-5 pt-3 shadow-[0_-10px_40px_rgba(0,0,0,0.14)]">
       <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-black/10" />
 
-      <p className="mb-2 text-[16px] font-extrabold leading-tight text-[var(--zx-ink)]">
+      <p className="mb-2 break-words text-[16px] font-extrabold leading-tight text-[var(--zx-ink)]">
         Share your criteria
       </p>
 
@@ -129,7 +129,7 @@ export function PlannerCriteriaSheet({
               setAvailabilityMode(nextValue.trim() ? "Custom" : "Whenever");
             }}
             aria-label="Custom availability"
-            className="w-full rounded-xl bg-white px-3 py-3 text-[15px] font-semibold text-[var(--zx-ink)] outline-none placeholder:text-[var(--zx-muted)]"
+            className="min-w-0 w-full break-words rounded-xl bg-white px-3 py-3 text-[15px] font-semibold text-[var(--zx-ink)] outline-none placeholder:text-[var(--zx-muted)]"
           />
         </div>
       </div>
@@ -169,7 +169,7 @@ export function PlannerCriteriaSheet({
         />
       </div>
 
-      {error ? <p className="mt-1 text-[13px] text-[#d94c3d]">{error}</p> : null}
+      {error ? <p className="mt-1 break-words text-[13px] text-[#d94c3d]">{error}</p> : null}
 
       <button
         type="button"

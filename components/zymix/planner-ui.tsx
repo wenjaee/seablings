@@ -354,9 +354,11 @@ function RecommendationCard({ recommendation, selected = false, onToggle, compac
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[16px] font-semibold leading-tight text-[var(--zx-ink)]">{recommendation.item.title}</p>
+              <p className="break-words text-[16px] font-semibold leading-tight text-[var(--zx-ink)]">
+                {recommendation.item.title}
+              </p>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-[var(--zx-muted)]">
                 <span>{meta.label}</span>
                 <span aria-hidden>•</span>
@@ -371,9 +373,9 @@ function RecommendationCard({ recommendation, selected = false, onToggle, compac
             </div>
           </div>
 
-          <div className="mt-2 flex items-center gap-2 text-[12px] text-[var(--zx-muted)]">
+          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-[12px] text-[var(--zx-muted)]">
             {ownerPersona ? <Avatar spec={ownerPersona.avatar} size={20} /> : null}
-            <span>Saved by {recommendation.owner.name}</span>
+            <span className="min-w-0 flex-1 break-words">Saved by {recommendation.owner.name}</span>
             {recommendation.distanceLabel ? (
               <>
                 <span aria-hidden>•</span>
@@ -383,7 +385,7 @@ function RecommendationCard({ recommendation, selected = false, onToggle, compac
           </div>
 
           {!compact && recommendation.item.openingHours ? (
-            <p className="mt-2 text-[12px] text-[var(--zx-muted)]">{recommendation.item.openingHours}</p>
+            <p className="mt-2 break-words text-[12px] text-[var(--zx-muted)]">{recommendation.item.openingHours}</p>
           ) : null}
         </div>
       </div>
@@ -396,7 +398,9 @@ function RecommendationCard({ recommendation, selected = false, onToggle, compac
           </p>
           <ul className="space-y-1 text-[13px] leading-5 text-[var(--zx-ink)]">
             {recommendation.reasons.slice(0, compact ? 2 : 3).map((reason) => (
-              <li key={reason}>{reason}</li>
+              <li key={reason} className="break-words">
+                {reason}
+              </li>
             ))}
           </ul>
         </div>
@@ -408,9 +412,13 @@ function RecommendationCard({ recommendation, selected = false, onToggle, compac
           </p>
           <ul className="space-y-1 text-[13px] leading-5 text-[var(--zx-muted)]">
             {recommendation.warnings.length > 0 ? (
-              recommendation.warnings.slice(0, compact ? 2 : 3).map((warning) => <li key={warning}>{warning}</li>)
+              recommendation.warnings.slice(0, compact ? 2 : 3).map((warning) => (
+                <li key={warning} className="break-words">
+                  {warning}
+                </li>
+              ))
             ) : (
-              <li>No material warnings.</li>
+              <li className="break-words">No material warnings.</li>
             )}
           </ul>
         </div>
@@ -562,16 +570,16 @@ export function PlannerCriteriaOverlay({
   return (
     <section className="mx-3 mb-2 rounded-[28px] border border-black/6 bg-white px-4 py-4 shadow-[0_18px_36px_rgba(15,23,42,0.10)]">
       <div className="flex items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--zx-faint)]">@planner private</p>
-          <h2 className="mt-1 text-[17px] font-semibold text-[var(--zx-ink)]">Share your criteria</h2>
+          <h2 className="mt-1 min-w-0 break-words text-[17px] font-semibold text-[var(--zx-ink)]">Share your criteria</h2>
         </div>
         <span className="rounded-full bg-[var(--zx-surface)] px-3 py-1 text-[12px] font-semibold text-[var(--zx-muted)]">
           {step + 1}/3
         </span>
       </div>
 
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex min-w-0 items-center gap-2">
         <StepChip isActive={step === 0} isDone={step > 0} label="1" />
         <div className="h-px flex-1 bg-black/8" aria-hidden />
         <StepChip isActive={step === 1} isDone={step > 1} label="2" />
@@ -602,8 +610,8 @@ export function PlannerCriteriaOverlay({
               aria-label="Custom availability"
               className={
                 usesWhenever
-                  ? "w-full rounded-[18px] border border-black/8 bg-[var(--zx-surface)] px-4 py-3 text-[14px] text-[var(--zx-ink)] outline-none"
-                  : "w-full rounded-[18px] border border-[var(--zx-brand)] bg-[#f0ffee] px-4 py-3 text-[14px] text-[var(--zx-ink)] outline-none"
+                  ? "min-w-0 w-full rounded-[18px] border border-black/8 bg-[var(--zx-surface)] px-4 py-3 text-[14px] text-[var(--zx-ink)] outline-none break-words"
+                  : "min-w-0 w-full rounded-[18px] border border-[var(--zx-brand)] bg-[#f0ffee] px-4 py-3 text-[14px] text-[var(--zx-ink)] outline-none break-words"
               }
             />
           </div>
@@ -646,12 +654,12 @@ export function PlannerCriteriaOverlay({
             placeholder="E.g. No alcohol, I don't want anywhere sunny"
             aria-label="Vetoes"
             rows={3}
-            className="mt-3 w-full resize-y rounded-[18px] border border-black/8 bg-[var(--zx-surface)] px-4 py-3 text-[14px] leading-6 text-[var(--zx-ink)] outline-none placeholder:text-[var(--zx-muted)]"
+            className="mt-3 min-w-0 w-full resize-y rounded-[18px] border border-black/8 bg-[var(--zx-surface)] px-4 py-3 text-[14px] leading-6 text-[var(--zx-ink)] outline-none break-words placeholder:text-[var(--zx-muted)]"
           />
         </div>
       ) : null}
 
-      {error ? <p className="mt-3 text-[13px] text-[#d94c3d]">{error}</p> : null}
+      {error ? <p className="mt-3 break-words text-[13px] text-[#d94c3d]">{error}</p> : null}
 
       <div className="mt-4 flex items-center gap-2">
         <button
@@ -718,16 +726,16 @@ export function PlannerVotingOverlay({
 
   return (
     <section className="mx-3 mb-2 rounded-[28px] border border-black/6 bg-white px-4 py-4 shadow-[0_18px_36px_rgba(15,23,42,0.10)]">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--zx-faint)]">@planner private</p>
-          <h2 className="mt-1 text-[17px] font-semibold text-[var(--zx-ink)]">Cast your vote</h2>
+          <h2 className="mt-1 min-w-0 break-words text-[17px] font-semibold text-[var(--zx-ink)]">Cast your vote</h2>
         </div>
         <span className="rounded-full bg-[var(--zx-surface)] px-3 py-1 text-[12px] font-semibold text-[var(--zx-muted)]">{selectionSummary}</span>
       </div>
 
       {session.proposedTime ? (
-        <p className="mt-3 inline-flex items-center gap-2 text-[13px] text-[var(--zx-muted)]">
+        <p className="mt-3 inline-flex min-w-0 flex-wrap items-center gap-2 break-words text-[13px] text-[var(--zx-muted)]">
           <Clock3 size={14} aria-hidden />
           Proposed time: {session.proposedTime}
         </p>
@@ -759,7 +767,7 @@ export function PlannerVotingOverlay({
         })}
       </div>
 
-      {error ? <p className="mt-3 text-[13px] text-[#d94c3d]">{error}</p> : null}
+      {error ? <p className="mt-3 break-words text-[13px] text-[#d94c3d]">{error}</p> : null}
 
       <button
         type="button"
@@ -780,7 +788,9 @@ export function PlannerSpectatorNotice({ session }: { session: PlannerSession })
 
   return (
     <section className="mx-3 mb-2 rounded-[24px] border border-dashed border-black/10 bg-white/85 px-4 py-3">
-      <p className="text-[13px] text-[var(--zx-muted)]">{participantNames.join(", ")} are voting in the planner flow.</p>
+      <p className="break-words text-[13px] text-[var(--zx-muted)]">
+        {participantNames.join(", ")} are voting in the planner flow.
+      </p>
     </section>
   );
 }
@@ -820,10 +830,10 @@ export function PlannerStateCard({
 
   return (
     <section className="mb-4 rounded-[28px] border border-black/6 bg-white px-4 py-4 shadow-[0_14px_28px_rgba(15,23,42,0.08)]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--zx-faint)]">@planner live</p>
-          <h2 className="mt-1 text-[18px] font-semibold text-[var(--zx-ink)]">
+          <h2 className="mt-1 break-words text-[18px] font-semibold text-[var(--zx-ink)]">
             {session.status === "collecting"
               ? "Collecting criteria"
               : session.status === "voting"
@@ -857,7 +867,7 @@ export function PlannerStateCard({
         </div>
       </div>
 
-      {cancelError ? <p className="mt-3 text-[13px] text-[#d94c3d]">{cancelError}</p> : null}
+      {cancelError ? <p className="mt-3 break-words text-[13px] text-[#d94c3d]">{cancelError}</p> : null}
 
       {isCollecting ? (
         <div className="mt-4 space-y-3">
@@ -867,7 +877,9 @@ export function PlannerStateCard({
               {criteriaCount}/{participantCount}
             </p>
             {missingCriteria.length > 0 ? (
-              <p className="mt-2 text-[13px] text-[var(--zx-muted)]">Waiting on {missingCriteria.map(getParticipantLabel).join(", ")}.</p>
+              <p className="mt-2 break-words text-[13px] text-[var(--zx-muted)]">
+                Waiting on {missingCriteria.map(getParticipantLabel).join(", ")}.
+              </p>
             ) : (
               <p className="mt-2 text-[13px] text-[var(--zx-muted)]">Everyone is in. Finalizing the shortlist.</p>
             )}
@@ -883,10 +895,10 @@ export function PlannerStateCard({
                   key={participantId}
                   className={
                     isComplete
-                      ? "rounded-full bg-[#dff7de] px-3 py-1.5 text-[12px] font-medium text-[#1d7a46]"
+                      ? "max-w-full break-words rounded-full bg-[#dff7de] px-3 py-1.5 text-[12px] font-medium text-[#1d7a46]"
                       : isCurrent
-                        ? "rounded-full bg-[#fff2cf] px-3 py-1.5 text-[12px] font-medium text-[#946600]"
-                        : "rounded-full bg-[var(--zx-surface)] px-3 py-1.5 text-[12px] font-medium text-[var(--zx-muted)]"
+                        ? "max-w-full break-words rounded-full bg-[#fff2cf] px-3 py-1.5 text-[12px] font-medium text-[#946600]"
+                        : "max-w-full break-words rounded-full bg-[var(--zx-surface)] px-3 py-1.5 text-[12px] font-medium text-[var(--zx-muted)]"
                   }
                 >
                   {getParticipantLabel(participantId)}
@@ -903,7 +915,9 @@ export function PlannerStateCard({
             <div className="rounded-[22px] bg-[var(--zx-surface)] px-4 py-3">
               <p className="text-[12px] text-[var(--zx-muted)]">Session criteria</p>
               {aggregateAvailability ? <p className="mt-1.5 break-words text-[14px] font-medium text-[var(--zx-ink)]">Availability: {aggregateAvailability}</p> : null}
-              {aggregateBudget ? <p className="mt-1.5 text-[14px] text-[var(--zx-ink)]">Budget: {aggregateBudget}</p> : null}
+              {aggregateBudget ? (
+                <p className="mt-1.5 break-words text-[14px] text-[var(--zx-ink)]">Budget: {aggregateBudget}</p>
+              ) : null}
               {aggregateVetoes ? <p className="mt-1.5 break-words text-[14px] text-[var(--zx-ink)]">Vetoes: {aggregateVetoes}</p> : null}
             </div>
           ) : null}
@@ -917,14 +931,16 @@ export function PlannerStateCard({
                 </p>
               </div>
               {session.proposedTime ? (
-                <p className="inline-flex items-center gap-2 text-[13px] text-[var(--zx-muted)]">
+                <p className="inline-flex min-w-0 flex-wrap items-center gap-2 break-words text-[13px] text-[var(--zx-muted)]">
                   <Clock3 size={14} aria-hidden />
                   {session.proposedTime}
                 </p>
               ) : null}
             </div>
             {missingVotes.length > 0 ? (
-              <p className="mt-2 text-[13px] text-[var(--zx-muted)]">Waiting on {missingVotes.map(getParticipantLabel).join(", ")}.</p>
+              <p className="mt-2 break-words text-[13px] text-[var(--zx-muted)]">
+                Waiting on {missingVotes.map(getParticipantLabel).join(", ")}.
+              </p>
             ) : null}
           </div>
 
@@ -1111,7 +1127,10 @@ function PlannerConfirmationCompact({
           </p>
           <div className="flex flex-wrap gap-2">
             {voteEntries.map((entry) => (
-              <span key={entry.bucketItemId} className="rounded-full bg-white px-3 py-1.5 text-[12px] font-medium text-[var(--zx-ink)]">
+              <span
+                key={entry.bucketItemId}
+                className="max-w-full break-words rounded-full bg-white px-3 py-1.5 text-[12px] font-medium text-[var(--zx-ink)]"
+              >
                 {entry.title}: {entry.count}
               </span>
             ))}

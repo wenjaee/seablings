@@ -51,18 +51,18 @@ export function ProfileScreen() {
   return (
     <PhoneShell>
       <main className="zx-hide-scroll flex-1 overflow-y-auto px-4 pt-1 sm:px-5">
-        <h1 className="text-[30px] font-extrabold tracking-tight text-[var(--zx-ink)]">Me</h1>
+        <h1 className="text-[24px] font-extrabold tracking-tight text-[var(--zx-ink)]">Me</h1>
 
         {isLoading ? <p className="mt-4 text-[14px] text-[var(--zx-muted)]">Loading profile...</p> : null}
         {error ? <p className="mt-4 text-[14px] text-[#d94c3d]">{error}</p> : null}
 
         {persona ? (
           <>
-            <section className="mt-5 flex items-center gap-4">
-              <Avatar spec={persona.avatar} size={64} />
+            <section className="mt-4 flex items-center gap-3.5">
+              <Avatar spec={persona.avatar} size={58} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[22px] font-extrabold leading-tight text-[var(--zx-ink)]">{persona.name}</p>
-                <p className="truncate text-[14px] text-[var(--zx-muted)]">{persona.handle}</p>
+                <p className="truncate text-[19px] font-extrabold leading-tight text-[var(--zx-ink)]">{persona.name}</p>
+                <p className="truncate text-[13px] text-[var(--zx-muted)]">{persona.handle}</p>
               </div>
               <button
                 type="button"
@@ -73,35 +73,35 @@ export function ProfileScreen() {
               </button>
             </section>
 
-            <p className="mt-4 text-[14px] text-[var(--zx-muted)]">
+            <p className="mt-3 text-[13px] text-[var(--zx-muted)]">
               {persona.followers} followers · {persona.following} following
             </p>
 
-            <section className="mt-5 flex">
+            <section className="mt-4 flex">
               {persona.stats.map((stat, index) => (
                 <div key={stat.label} className={index === 0 ? "flex-1 pr-4" : "flex-1 border-l border-[var(--zx-line)] px-4"}>
-                  <p className="text-[20px] font-extrabold leading-none text-[var(--zx-ink)]">{stat.value}</p>
-                  <p className="mt-1 text-[13px] text-[var(--zx-ink)]">{stat.label}</p>
+                  <p className="text-[17px] font-extrabold leading-none text-[var(--zx-ink)]">{stat.value}</p>
+                  <p className="mt-1 text-[12px] text-[var(--zx-ink)]">{stat.label}</p>
                 </div>
               ))}
             </section>
 
-            <section className="mt-7 grid grid-cols-3 gap-3">
+            <section className="mt-5 grid grid-cols-3 gap-2.5">
               {actionCards.map((card) => (
                 <button
                   key={card.label}
                   type="button"
-                  className="flex flex-col items-center gap-2 rounded-2xl bg-[var(--zx-surface)] px-1 py-4"
+                  className="flex min-w-0 flex-col items-center gap-1.5 rounded-2xl bg-[var(--zx-surface)] px-1 py-3"
                 >
-                  <span className="text-[28px] leading-none">{card.emoji}</span>
-                  <span className="whitespace-nowrap text-[12px] font-semibold text-[var(--zx-ink)]">{card.label}</span>
+                  <span className="text-[23px] leading-none">{card.emoji}</span>
+                  <span className="max-w-full truncate text-[11px] font-semibold text-[var(--zx-ink)]">{card.label}</span>
                 </button>
               ))}
             </section>
 
-            <button type="button" className="mt-5 flex w-full items-center gap-3 rounded-2xl bg-[var(--zx-surface)] px-3.5 py-3">
-              <Wallet size={21} className="text-[var(--zx-ink)]" />
-              <span className="text-[16px] font-semibold text-[var(--zx-ink)]">Wallet</span>
+            <button type="button" className="mt-4 flex w-full items-center gap-3 rounded-2xl bg-[var(--zx-surface)] px-3.5 py-3">
+              <Wallet size={19} className="text-[var(--zx-ink)]" />
+              <span className="text-[14px] font-semibold text-[var(--zx-ink)]">Wallet</span>
               <span className="ml-auto rounded-md bg-[#fdeede] px-2 py-0.5 text-[12px] font-bold italic text-[var(--zx-warn)]">
                 {persona.walletVerified ? "Verified" : "Unverified"}
               </span>
@@ -109,43 +109,43 @@ export function ProfileScreen() {
             </button>
 
             <Link
-              href={"/bucket-list" as Route}
+              href={"/me/bucket-list" as Route}
               className="mt-3 flex w-full items-center gap-3 rounded-2xl bg-[var(--zx-surface)] px-3.5 py-3"
             >
-              <ListChecks size={21} className="text-[var(--zx-ink)]" />
-              <span className="text-[16px] font-semibold text-[var(--zx-ink)]">Bucket List</span>
+              <ListChecks size={19} className="text-[var(--zx-ink)]" />
+              <span className="text-[14px] font-semibold text-[var(--zx-ink)]">Bucket List</span>
               <ChevronRight size={18} className="ml-auto text-[var(--zx-faint)]" />
             </Link>
 
-            <section className="mt-4 rounded-2xl bg-[var(--zx-surface)] px-4">
-              <button type="button" className="flex w-full items-center gap-4 py-4">
-                <Orbit size={21} className="text-[var(--zx-ink)]" />
-                <span className="text-[16px] font-semibold text-[var(--zx-ink)]">The Mix</span>
+            <section className="mt-3 rounded-2xl bg-[var(--zx-surface)] px-3.5">
+              <button type="button" className="flex w-full items-center gap-3.5 py-3.5">
+                <Orbit size={19} className="text-[var(--zx-ink)]" />
+                <span className="text-[14px] font-semibold text-[var(--zx-ink)]">The Mix</span>
                 <ChevronRight size={20} className="ml-auto text-[var(--zx-faint)]" />
               </button>
               <div className="h-px bg-[var(--zx-line)]" />
-              <button type="button" className="flex w-full items-center gap-4 py-4">
-                <Users size={21} className="text-[var(--zx-ink)]" />
-                <span className="text-[16px] font-semibold text-[var(--zx-ink)]">My Friends</span>
+              <button type="button" className="flex w-full items-center gap-3.5 py-3.5">
+                <Users size={19} className="text-[var(--zx-ink)]" />
+                <span className="text-[14px] font-semibold text-[var(--zx-ink)]">My Friends</span>
                 <span className="ml-auto flex items-center -space-x-3">
                   {friends.map((friend, index) => (
-                    <Avatar key={index} spec={friend} size={30} className="ring-2 ring-[var(--zx-surface)]" />
+                    <Avatar key={index} spec={friend} size={28} className="ring-2 ring-[var(--zx-surface)]" />
                   ))}
                 </span>
                 <ChevronRight size={18} className="text-[var(--zx-faint)]" />
               </button>
             </section>
 
-            <section className="mt-4 rounded-2xl bg-[var(--zx-surface)] px-4">
-              <button type="button" className="flex w-full items-center gap-4 py-4">
-                <UserCog size={21} className="text-[var(--zx-ink)]" />
-                <span className="text-[16px] font-semibold text-[var(--zx-ink)]">Account</span>
+            <section className="mt-3 rounded-2xl bg-[var(--zx-surface)] px-3.5">
+              <button type="button" className="flex w-full items-center gap-3.5 py-3.5">
+                <UserCog size={19} className="text-[var(--zx-ink)]" />
+                <span className="text-[14px] font-semibold text-[var(--zx-ink)]">Account</span>
                 <ChevronRight size={20} className="ml-auto text-[var(--zx-faint)]" />
               </button>
               <div className="h-px bg-[var(--zx-line)]" />
-              <button type="button" className="flex w-full items-center gap-4 py-4">
-                <Lock size={21} className="text-[var(--zx-ink)]" />
-                <span className="text-[16px] font-semibold text-[var(--zx-ink)]">Privacy</span>
+              <button type="button" className="flex w-full items-center gap-3.5 py-3.5">
+                <Lock size={19} className="text-[var(--zx-ink)]" />
+                <span className="text-[14px] font-semibold text-[var(--zx-ink)]">Privacy</span>
                 <ChevronRight size={18} className="ml-auto text-[var(--zx-faint)]" />
               </button>
             </section>

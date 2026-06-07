@@ -26,6 +26,7 @@ const VIDEO_EXTRACTION_TIMEOUT_MS = 60_000;
 const VIDEO_DOWNLOAD_TIMEOUT_MS = 30_000;
 const MAX_INLINE_VIDEO_BYTES = 18 * 1024 * 1024;
 const PLANNER_AGGREGATE_BUDGET_CAP = 60;
+const PROVIDER_CATEGORIES_TEXT = bucketCategoryValues.join(", ");
 const ENRICHMENT_CORE_FIELDS = ["address", "postalCode", "priceEstimate", "openingHours", "websiteUrl"] as const;
 const RESERVED_TAGS = new Set([
   "ai",
@@ -724,7 +725,7 @@ function buildGeminiExtractionPrompt(payload: ProviderCapturePayload): string {
     `Source type: ${payload.sourceType}`,
     shouldIncludeSourceUrlInPrompt(payload) ? `Source URL: ${payload.sourceUrl}` : null,
     payload.screenshotName ? `Screenshot name: ${payload.screenshotName}` : null,
-    "Allowed categories: bakery, cafe, restaurant, bar, nightlife, activity, culture, shopping, other.",
+    `Allowed categories: ${PROVIDER_CATEGORIES_TEXT}.`,
     "Return JSON only matching the provided schema.",
     "Focus on low-stakes extraction only: candidate place name, short description, why it seems interesting, and an initial category.",
     "Do not invent exact address, postal code, opening hours, website or booking URL, or price tier. Leave optional fields blank when unknown.",
@@ -744,7 +745,7 @@ function buildGeminiVideoExtractionPrompt(payload: ProviderCapturePayload): stri
     `Source type: ${payload.sourceType}`,
     shouldIncludeSourceUrlInPrompt(payload) ? `Source URL: ${payload.sourceUrl}` : null,
     payload.screenshotName ? `Screenshot name: ${payload.screenshotName}` : null,
-    "Allowed categories: bakery, cafe, restaurant, bar, nightlife, activity, culture, shopping, other.",
+    `Allowed categories: ${PROVIDER_CATEGORIES_TEXT}.`,
     "Return JSON only matching the provided schema.",
     "Use the video media first, combining spoken audio/transcript, visible on-screen text, signage, overlays, and the resolved caption/source metadata as evidence.",
     "Do not rely on the bare social URL alone. For social captures, EnsembleData metadata is required before extraction.",
@@ -774,7 +775,7 @@ function buildPerplexityEnrichmentPrompt(place: ProviderPlaceExtraction, payload
     "confidenceNote should briefly explain uncertainty, ambiguity, or data gaps.",
     "dateHints should be a short array of time-sensitive hints such as pop-up dates, seasonal windows, or booking lead times when relevant.",
     "tags must contain 3 to 5 concise descriptive lowercase tags and must not include system labels or source-platform labels.",
-    "categoryOverride is optional and must be one of: bakery, cafe, restaurant, bar, nightlife, activity, culture, shopping, other.",
+    `categoryOverride is optional and must be one of: ${PROVIDER_CATEGORIES_TEXT}.`,
     "Do not invent missing details. Prefer omission plus a confidenceNote over guessing.",
     "",
     `Capture source type: ${payload.sourceType}`,
@@ -1313,7 +1314,7 @@ function sanitizePerplexityAttempt(
         description: description ?? "",
         whyInteresting: whyInteresting ?? "",
         neighborhood: neighborhood ?? "Unknown",
-        category: categoryOverride ?? "other"
+        category: categoryOverride ?? "activity"
       })
     ),
     categoryOverride,
@@ -1433,7 +1434,7 @@ function comparableName(value: string): string {
   return value
     .toLowerCase()
     .replace(/[^a-z0-9\s]+/g, " ")
-    .replace(/\b(the|restaurant|cafe|bar|bakery|club|hotel|official)\b/g, " ")
+    .replace(/\b(the|restaurant|cafe|nightlife|club|hotel|official)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -1994,7 +1995,7 @@ const EXTRACTION_RESPONSE_SCHEMA = {
           },
           category: {
             type: "string",
-            enum: ["bakery", "cafe", "restaurant", "bar", "nightlife", "activity", "culture", "shopping", "other"]
+            enum: bucketCategoryValues
           },
           confidence: { type: "number" }
         },
@@ -2065,7 +2066,7 @@ const PERPLEXITY_ENRICHMENT_SCHEMA = {
     },
     categoryOverride: {
       type: "string",
-      enum: ["bakery", "cafe", "restaurant", "bar", "nightlife", "activity", "culture", "shopping", "other"]
+      enum: bucketCategoryValues
     },
     confidence: { type: "number" }
   },
