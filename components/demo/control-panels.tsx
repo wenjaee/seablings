@@ -3,7 +3,7 @@ import { ArrowUpRight, CheckCircle2, Clock3, Link2, LoaderCircle, MapPin, ScanSe
 
 import type { BucketItem, PersonaId } from "@/lib/domain";
 import type { DemoCaptureTask } from "@/lib/demo/data";
-import { demoPersonas, formatMoney, formatTime, getPersona, getSourceLabel, getStatusLabel } from "@/lib/demo/data";
+import { demoPersonas, formatTime, getPersona, getSourceLabel, getStatusLabel } from "@/lib/demo/data";
 import { Panel, PersonaDot, Pill } from "@/components/demo/primitives";
 
 type CaptureQueuePanelProps = {
@@ -17,6 +17,43 @@ type PooledSpotsPanelProps = {
 type PersonaLinksPanelProps = {
   currentPersonaId?: PersonaId;
 };
+
+function getDisplayPriceTier(item: BucketItem): "$" | "$$" | "$$$" {
+  const normalizedPrice = item.priceEstimate.trim();
+  const tokens = normalizedPrice.match(/free|\$+|£+/gi) ?? [];
+  const tokenTier = Math.max(
+    ...tokens.map((token) => {
+      if (/free/i.test(token)) {
+        return 0;
+      }
+
+      return token.length;
+    }),
+    0
+  );
+
+  if (tokenTier >= 3 || item.estimatedCost >= 40) {
+    return "$$$";
+  }
+
+  if (tokenTier >= 2 || item.estimatedCost >= 25) {
+    return "$$";
+  }
+
+  if (tokenTier >= 1 || item.estimatedCost > 0) {
+    return "$";
+  }
+
+  return "$$";
+}
+
+function formatEnrichmentStatus(status: string): string {
+  return status
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+}
 
 export function CaptureQueuePanel({ tasks }: CaptureQueuePanelProps) {
   return (
@@ -63,6 +100,9 @@ export function PooledSpotsPanel({ items }: PooledSpotsPanelProps) {
       <div className="divide-y divide-[var(--line)]">
         {items.map((item) => {
           const owner = getPersona(item.userId);
+          const enrichmentLinks = item.enrichmentSourceLinks?.filter(Boolean) ?? [];
+          const hasEnrichmentMeta =
+            Boolean(item.enrichmentStatus) || enrichmentLinks.length > 0 || Boolean(item.enrichmentConfidenceNote);
 
           return (
             <article key={item.id} className="py-3 first:pt-0 last:pb-0">
@@ -81,11 +121,44 @@ export function PooledSpotsPanel({ items }: PooledSpotsPanelProps) {
                       <MapPin size={12} aria-hidden="true" />
                       {item.neighborhood}
                     </span>
-                    <span>{formatMoney(item.estimatedCost)}</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Link2 size={12} aria-hidden="true" />
+                      {getSourceLabel(item.sourceType)}
+                    </span>
+                    {item.openingHours ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock3 size={12} aria-hidden="true" />
+                        {item.openingHours}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
-                <span className="text-sm text-[var(--muted)]">{item.priceEstimate}</span>
+                <span className="text-sm font-semibold text-[var(--ink)]">{getDisplayPriceTier(item)}</span>
               </div>
+
+              {hasEnrichmentMeta ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+                  {item.enrichmentStatus ? (
+                    <Pill tone="muted" className="normal-case tracking-normal">
+                      {formatEnrichmentStatus(item.enrichmentStatus)}
+                    </Pill>
+                  ) : null}
+                  {item.enrichmentConfidenceNote ? <span>{item.enrichmentConfidenceNote}</span> : null}
+                  {enrichmentLinks.slice(0, 2).map((link, index) => (
+                    <a
+                      key={link}
+                      href={link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 hover:text-[var(--ink)]"
+                    >
+                      Source {index + 1}
+                      <ArrowUpRight size={12} aria-hidden="true" />
+                    </a>
+                  ))}
+                  {enrichmentLinks.length > 2 ? <span>+{enrichmentLinks.length - 2} more</span> : null}
+                </div>
+              ) : null}
             </article>
           );
         })}

@@ -1,14 +1,31 @@
+import type { PersonaId } from "@/lib/domain";
+
 export type AvatarSpec =
   | { kind: "checker" }
   | { kind: "initials"; initials: string; bg: string; fg?: string }
   | { kind: "tile"; bg: string; emoji: string; rounded?: "lg" | "full" }
   | { kind: "speaker" };
 
-export type Conversation = {
-  id: string;
+export type ZymixPersonaId = PersonaId | "tester";
+
+export type ZymixPersona = {
+  id: ZymixPersonaId;
   name: string;
+  handle: string;
+  color: string;
   avatar: AvatarSpec;
-  members?: string;
+  followers: number;
+  following: number;
+  stats: Array<{ label: string; value: number }>;
+  walletVerified: boolean;
+};
+
+export type Conversation = {
+  id: "seablings" | ZymixPersonaId;
+  name: string;
+  href: `/chat/${string}`;
+  avatar: AvatarSpec;
+  subtitle?: string;
   preview: string;
   time: string;
   unread?: number;
@@ -20,115 +37,226 @@ export type ThreadMessage =
   | {
       id: string;
       kind: "message";
-      authorId: string;
+      authorId: ZymixPersonaId;
       authorName: string;
       avatar: AvatarSpec;
       text: string;
       time: string;
       mine?: boolean;
+      pending?: boolean;
+      failed?: boolean;
     };
 
 export type ThreadData = {
-  id: string;
+  routeId: string;
+  threadId: string;
   name: string;
-  members: number;
   avatar: AvatarSpec;
+  subtitle: string;
   dateLabel: string;
-  messages: ThreadMessage[];
+  verified?: boolean;
+  initialMessages: ThreadMessage[];
 };
 
-const prayaAvatar: AvatarSpec = { kind: "initials", initials: "P", bg: "#b9714e" };
-
-export const profile = {
-  displayName: "inajeffyy",
-  handle: "@zymix_321gq0",
-  followers: 0,
-  following: 0,
-  stats: [
-    { label: "Karma", value: 0 },
-    { label: "Contributions", value: 0 },
-    { label: "Account Age", value: 0 }
-  ],
-  walletVerified: false,
-  avatar: { kind: "checker" } as AvatarSpec,
-  friends: [prayaAvatar, { kind: "checker" } as AvatarSpec]
-};
-
-export const conversations: Conversation[] = [
+const PERSONAS: ZymixPersona[] = [
   {
-    id: "zymix-early-builders",
-    name: "ZYMIX_Early Builders",
-    avatar: { kind: "tile", bg: "#0c0c0c", emoji: "🌿", rounded: "lg" },
-    members: "79 members",
-    preview: "1337XCode: [Location]",
-    time: "25m",
-    unread: 3
-  },
-  {
-    id: "service-notifications",
-    name: "Service Notifications",
-    avatar: { kind: "speaker" },
-    preview: "[Message]",
-    time: "3h"
-  },
-  {
-    id: "seablings",
-    name: "seablings",
+    id: "jeff",
+    name: "Jeff",
+    handle: "@jeff",
+    color: "#0f766e",
     avatar: { kind: "checker" },
-    members: "3 members",
-    preview: "Praya Tjon...: hi",
-    time: "7h",
-    verified: true
+    followers: 12,
+    following: 19,
+    stats: [
+      { label: "Karma", value: 18 },
+      { label: "Contributions", value: 7 },
+      { label: "Account Age", value: 1 }
+    ],
+    walletVerified: false
+  },
+  {
+    id: "praya",
+    name: "Praya",
+    handle: "@praya",
+    color: "#b9714e",
+    avatar: { kind: "initials", initials: "P", bg: "#b9714e" },
+    followers: 8,
+    following: 15,
+    stats: [
+      { label: "Karma", value: 11 },
+      { label: "Contributions", value: 5 },
+      { label: "Account Age", value: 1 }
+    ],
+    walletVerified: false
   },
   {
     id: "tana",
-    name: "tana",
-    avatar: { kind: "checker" },
-    preview: "You are now friends",
-    time: "7h"
+    name: "Tana",
+    handle: "@tana",
+    color: "#5a7f36",
+    avatar: { kind: "initials", initials: "T", bg: "#5a7f36" },
+    followers: 6,
+    following: 11,
+    stats: [
+      { label: "Karma", value: 9 },
+      { label: "Contributions", value: 4 },
+      { label: "Account Age", value: 1 }
+    ],
+    walletVerified: false
   },
   {
-    id: "praya-tjondro",
-    name: "Praya Tjondro",
-    avatar: prayaAvatar,
-    preview: "You are now friends",
-    time: "7h"
+    id: "tester",
+    name: "Tester",
+    handle: "@tester",
+    color: "#4c5c7a",
+    avatar: { kind: "tile", bg: "#4c5c7a", emoji: "🧪", rounded: "full" },
+    followers: 1,
+    following: 3,
+    stats: [
+      { label: "Karma", value: 2 },
+      { label: "Contributions", value: 1 },
+      { label: "Account Age", value: 0 }
+    ],
+    walletVerified: false
   }
 ];
 
-const seablingsThread: ThreadData = {
-  id: "seablings",
-  name: "seablings",
-  members: 3,
-  avatar: { kind: "checker" },
-  dateLabel: "Today 12:07 PM",
-  messages: [
-    { id: "sys-create", kind: "system", text: "inajeffyy created the group" },
+const PERSONA_MAP = Object.fromEntries(PERSONAS.map((persona) => [persona.id, persona])) as Record<ZymixPersonaId, ZymixPersona>;
+
+const DM_PREVIEWS: Partial<Record<ZymixPersonaId, string>> = {
+  jeff: "Jeff: I can take Shoreditch side.",
+  praya: "Praya: hi",
+  tana: "Tana: I found a good backup plan.",
+  tester: "Tester: demo path is looking good."
+};
+
+export const loginPersonas = PERSONAS;
+
+export function getZymixPersona(id: string | null | undefined): ZymixPersona | null {
+  if (!id) {
+    return null;
+  }
+
+  return PERSONA_MAP[id as ZymixPersonaId] ?? null;
+}
+
+export function isSeededPersonaId(id: string | null | undefined): id is PersonaId {
+  return id === "jeff" || id === "praya" || id === "tana";
+}
+
+export function getFriendAvatars(currentPersonaId: ZymixPersonaId) {
+  return PERSONAS.filter((persona) => persona.id !== currentPersonaId).map((persona) => persona.avatar);
+}
+
+export function getDmThreadId(a: ZymixPersonaId, b: ZymixPersonaId) {
+  const [left, right] = [a, b].sort();
+  return `dm:${left}:${right}`;
+}
+
+function getGroupInitialMessages(): ThreadMessage[] {
+  return [
+    { id: "group-create", kind: "system", text: "SEAblings group created" },
     {
-      id: "m-praya-hi",
+      id: "group-praya-hi",
       kind: "message",
       authorId: "praya",
-      authorName: "Praya Tjondro",
-      avatar: prayaAvatar,
+      authorName: "Praya",
+      avatar: PERSONA_MAP.praya.avatar,
       text: "hi",
       time: "12:09"
     }
-  ]
-};
+  ];
+}
 
-export function getThread(id: string): ThreadData {
-  if (id === "seablings") {
-    return seablingsThread;
+function getDirectInitialMessages(otherPersonaId: ZymixPersonaId): ThreadMessage[] {
+  const other = PERSONA_MAP[otherPersonaId];
+
+  return [
+    { id: `dm-${otherPersonaId}-friends`, kind: "system", text: "You are now connected on Zymix" },
+    {
+      id: `dm-${otherPersonaId}-hello`,
+      kind: "message",
+      authorId: other.id,
+      authorName: other.name,
+      avatar: other.avatar,
+      text: `Hey, ping me here when you want to plan.`,
+      time: "11:42"
+    }
+  ];
+}
+
+export function getConversations(currentPersonaId: ZymixPersonaId): Conversation[] {
+  const others = PERSONAS.filter((persona) => persona.id !== currentPersonaId);
+
+  return [
+    {
+      id: "seablings",
+      name: "SEAblings",
+      href: "/chat/seablings",
+      avatar: { kind: "checker" },
+      subtitle: "4 members",
+      preview: "Praya: hi",
+      time: "7h",
+      unread: 3,
+      verified: true
+    },
+    ...others.map((persona, index) => ({
+      id: persona.id,
+      name: persona.name,
+      href: `/chat/${persona.id}` as `/chat/${string}`,
+      avatar: persona.avatar,
+      preview: DM_PREVIEWS[persona.id] ?? `${persona.name}: demo chat ready.`,
+      time: index === 0 ? "25m" : index === 1 ? "3h" : "7h"
+    }))
+  ];
+}
+
+export function getThreadData(routeId: string, currentPersonaId: ZymixPersonaId): ThreadData | null {
+  if (routeId === "seablings") {
+    return {
+      routeId,
+      threadId: "group:seablings",
+      name: "SEAblings",
+      avatar: { kind: "checker" },
+      subtitle: "4 members",
+      dateLabel: "Today 12:07 PM",
+      verified: true,
+      initialMessages: getGroupInitialMessages()
+    };
   }
 
-  const conv = conversations.find((candidate) => candidate.id === id);
+  const other = getZymixPersona(routeId);
+  if (!other || other.id === currentPersonaId) {
+    return null;
+  }
 
   return {
-    id,
-    name: conv?.name ?? "Chat",
-    members: 2,
-    avatar: conv?.avatar ?? { kind: "checker" },
+    routeId,
+    threadId: getDmThreadId(currentPersonaId, other.id),
+    name: other.name,
+    avatar: other.avatar,
+    subtitle: "Direct message",
     dateLabel: "Today",
-    messages: [{ id: "sys-friends", kind: "system", text: "You are now friends" }]
+    initialMessages: getDirectInitialMessages(other.id)
   };
+}
+
+export function normalizePersonaPayload(payload: unknown): ZymixPersona | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const record = payload as Record<string, unknown>;
+  const nested = record.persona;
+  if (nested && typeof nested === "object") {
+    const nestedPersona = nested as Record<string, unknown>;
+    const nestedId = typeof nestedPersona.id === "string" ? nestedPersona.id : null;
+    const resolvedNested = getZymixPersona(nestedId);
+    if (resolvedNested) {
+      return resolvedNested;
+    }
+  }
+
+  const id = typeof record.id === "string" ? record.id : null;
+  return getZymixPersona(id);
 }

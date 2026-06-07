@@ -12,10 +12,25 @@ import type {
   Persona,
   PlanningCriteria,
   Recommendation,
-  SourcePlatform
+  SourcePlatform,
+  ZymixMessage
 } from "@/lib/domain";
-import { personas, seededBucketItems, seededCriteria, seededMessages, seededRecommendations } from "@/lib/fixtures";
-import type { ListBucketItemFilters, ListCaptureFilters, ManualBucketItemInput } from "@/lib/server/validation";
+import {
+  personas,
+  seededBucketItems,
+  seededCriteria,
+  seededMessages,
+  seededRecommendations,
+  seededZymixMessages
+} from "@/lib/fixtures";
+import type {
+  CreateZymixMessageInput,
+  ListBucketItemFilters,
+  ListCaptureFilters,
+  ListZymixMessageFilters,
+  ManualBucketItemInput
+} from "@/lib/server/validation";
+import { normalizeEnrichmentStatus, normalizePriceEstimate, normalizeStringArray } from "@/lib/server/validation";
 
 type StoreMode = "demo" | "supabase";
 
@@ -23,9 +38,28 @@ type BackendStore = {
   mode: StoreMode;
   listCaptures(filters?: ListCaptureFilters): Promise<IngestionTask[]>;
   createCaptureTask(payload: CapturePayload): Promise<IngestionTask>;
+  updateCaptureTaskStatus(id: string, status: IngestionTaskStatus): Promise<IngestionTask | null>;
   listBucketItems(filters?: ListBucketItemFilters): Promise<BucketItem[]>;
   createBucketItem(input: ManualBucketItemInput): Promise<BucketItem>;
+  saveBucketItemEmbedding(input: BucketItemEmbeddingInput): Promise<void>;
   updateBucketItemStatus(id: string, status: BucketItemStatus): Promise<BucketItem | null>;
+  listZymixMessages(filters: ListZymixMessageFilters): Promise<ZymixMessage[]>;
+  createZymixMessage(userId: ZymixMessage["userId"], input: CreateZymixMessageInput): Promise<ZymixMessage>;
+  getLatestZymixMessages(threadIds: string[]): Promise<Record<string, ZymixMessage | null>>;
+};
+
+type BucketItemEmbeddingInput = {
+  bucketItemId: string;
+  values: number[];
+  text: string;
+  model: string;
+  dimensions: number;
+  contentHash: string;
+};
+
+type BucketItemEmbeddingRecord = BucketItemEmbeddingInput & {
+  createdAt: string;
+  updatedAt: string;
 };
 
 type DemoState = {
@@ -33,8 +67,10 @@ type DemoState = {
   criteria: PlanningCriteria[];
   recommendations: Recommendation[];
   messages: ChatMessage[];
+  zymixMessages: ZymixMessage[];
   tasks: IngestionTask[];
   bucketItems: BucketItem[];
+  bucketItemEmbeddings: BucketItemEmbeddingRecord[];
 };
 
 type IngestionTaskRow = {
@@ -68,6 +104,10 @@ type BucketItemRow = {
   website_url: string | null;
   source_url: string | null;
   source_type: string;
+  enrichment_provider: string | null;
+  enrichment_status: string | null;
+  enrichment_source_links: string[] | null;
+  enrichment_confidence_note: string | null;
   tags: string[] | null;
   confidence: number;
   starts_at: string | null;
@@ -104,6 +144,14 @@ type RecommendationRow = {
   score: number;
   reasons: string[] | null;
   warnings: string[] | null;
+};
+
+type ZymixMessageRow = {
+  id: string;
+  thread_id: string;
+  user_id: string;
+  text: string;
+  created_at: string;
 };
 
 declare global {
@@ -160,6 +208,18 @@ function createDemoStore(): BackendStore {
       state.tasks.unshift(task);
       return task;
     },
+    async updateCaptureTaskStatus(id, status) {
+      const state = getDemoState();
+      const task = state.tasks.find((candidate) => candidate.id === id);
+
+      if (!task) {
+        return null;
+      }
+
+      task.status = status;
+      task.updatedAt = nowIso();
+      return { ...task };
+    },
     async listBucketItems(filters) {
       const state = getDemoState();
       const items = state.bucketItems.filter((item) => {
@@ -179,35 +239,30 @@ function createDemoStore(): BackendStore {
     async createBucketItem(input) {
       const state = getDemoState();
       const timestamp = nowIso();
-      const item: BucketItem = {
-        id: createId("item"),
-        userId: input.userId,
-        status: input.status ?? "candidate",
-        dateType: input.dateType ?? "anytime",
-        title: input.title,
-        category: input.category,
-        description: input.description,
-        whyInteresting: input.whyInteresting,
-        locationName: input.locationName,
-        neighborhood: input.neighborhood,
-        address: input.address,
-        postalCode: input.postalCode,
-        priceEstimate: input.priceEstimate,
-        estimatedCost: input.estimatedCost ?? 0,
-        openingHours: input.openingHours,
-        websiteUrl: input.websiteUrl,
-        sourceUrl: input.sourceUrl,
-        sourceType: input.sourceType ?? "manual",
-        tags: input.tags ?? [],
-        confidence: input.confidence ?? 0.7,
-        startsAt: input.startsAt,
-        endsAt: input.endsAt,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      };
-
+      const item = createBucketItemDomainModel(input, timestamp);
       state.bucketItems.unshift(item);
       return item;
+    },
+    async saveBucketItemEmbedding(input) {
+      const state = getDemoState();
+      const timestamp = nowIso();
+      const existing = state.bucketItemEmbeddings.find((embedding) => embedding.bucketItemId === input.bucketItemId);
+
+      if (existing) {
+        existing.values = input.values;
+        existing.text = input.text;
+        existing.model = input.model;
+        existing.dimensions = input.dimensions;
+        existing.contentHash = input.contentHash;
+        existing.updatedAt = timestamp;
+        return;
+      }
+
+      state.bucketItemEmbeddings.push({
+        ...input,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      });
     },
     async updateBucketItemStatus(id, status) {
       const state = getDemoState();
@@ -220,6 +275,37 @@ function createDemoStore(): BackendStore {
       item.status = status;
       item.updatedAt = nowIso();
       return { ...item };
+    },
+    async listZymixMessages(filters) {
+      const state = getDemoState();
+
+      return sortByCreatedAtAscending(
+        state.zymixMessages.filter((message) => message.threadId === filters.threadId)
+      );
+    },
+    async createZymixMessage(userId, input) {
+      const state = getDemoState();
+      const message: ZymixMessage = {
+        id: createId("zymix"),
+        threadId: input.threadId,
+        userId,
+        text: input.text,
+        createdAt: nowIso()
+      };
+
+      state.zymixMessages.push(message);
+      return message;
+    },
+    async getLatestZymixMessages(threadIds) {
+      const state = getDemoState();
+      const result: Record<string, ZymixMessage | null> = {};
+      for (const threadId of threadIds) {
+        const messages = sortByCreatedAtAscending(
+          state.zymixMessages.filter((message) => message.threadId === threadId)
+        );
+        result[threadId] = messages.length > 0 ? messages[messages.length - 1] : null;
+      }
+      return result;
     }
   };
 }
@@ -275,6 +361,23 @@ function createSupabaseStore(): BackendStore {
 
       return mapTaskRowToDomain(data as IngestionTaskRow);
     },
+    async updateCaptureTaskStatus(id, status) {
+      await ensureSupabaseSeeded(client);
+
+      const timestamp = nowIso();
+      const { data, error } = await client
+        .from("ingestion_tasks")
+        .update({ status, updated_at: timestamp })
+        .eq("id", id)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(`Failed to update capture task status: ${error.message}`);
+      }
+
+      return data ? mapTaskRowToDomain(data as IngestionTaskRow) : null;
+    },
     async listBucketItems(filters) {
       await ensureSupabaseSeeded(client);
 
@@ -297,32 +400,7 @@ function createSupabaseStore(): BackendStore {
       await ensureSupabaseSeeded(client);
 
       const timestamp = nowIso();
-      const item: BucketItem = {
-        id: createId("item"),
-        userId: input.userId,
-        status: input.status ?? "candidate",
-        dateType: input.dateType ?? "anytime",
-        title: input.title,
-        category: input.category,
-        description: input.description,
-        whyInteresting: input.whyInteresting,
-        locationName: input.locationName,
-        neighborhood: input.neighborhood,
-        address: input.address,
-        postalCode: input.postalCode,
-        priceEstimate: input.priceEstimate,
-        estimatedCost: input.estimatedCost ?? 0,
-        openingHours: input.openingHours,
-        websiteUrl: input.websiteUrl,
-        sourceUrl: input.sourceUrl,
-        sourceType: input.sourceType ?? "manual",
-        tags: input.tags ?? [],
-        confidence: input.confidence ?? 0.7,
-        startsAt: input.startsAt,
-        endsAt: input.endsAt,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      };
+      const item = createBucketItemDomainModel(input, timestamp);
 
       const { data, error } = await client.from("bucket_items").insert(mapBucketItemDomainToRow(item)).select().single();
       if (error) {
@@ -330,6 +408,27 @@ function createSupabaseStore(): BackendStore {
       }
 
       return mapBucketItemRowToDomain(data as BucketItemRow);
+    },
+    async saveBucketItemEmbedding(input) {
+      await ensureSupabaseSeeded(client);
+
+      const timestamp = nowIso();
+      const { error } = await client.from("bucket_item_embeddings").upsert(
+        {
+          bucket_item_id: input.bucketItemId,
+          embedding: formatVector(input.values),
+          embedding_text: input.text,
+          model: input.model,
+          dimensions: input.dimensions,
+          content_hash: input.contentHash,
+          updated_at: timestamp
+        },
+        { onConflict: "bucket_item_id" }
+      );
+
+      if (error) {
+        throw new Error(`Failed to save bucket item embedding: ${error.message}`);
+      }
     },
     async updateBucketItemStatus(id, status) {
       await ensureSupabaseSeeded(client);
@@ -347,6 +446,85 @@ function createSupabaseStore(): BackendStore {
       }
 
       return data ? mapBucketItemRowToDomain(data as BucketItemRow) : null;
+    },
+    async listZymixMessages(filters) {
+      await ensureSupabaseSeeded(client);
+
+      const { data, error } = await client
+        .from("zymix_messages")
+        .select("*")
+        .eq("thread_id", filters.threadId)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        if (isMissingSupabaseTableError(error, "zymix_messages")) {
+          return createDemoStore().listZymixMessages(filters);
+        }
+
+        throw new Error(`Failed to list Zymix messages: ${error.message}`);
+      }
+
+      return (data ?? []).map(mapZymixMessageRowToDomain);
+    },
+    async createZymixMessage(userId, input) {
+      await ensureSupabaseSeeded(client);
+
+      const message: ZymixMessage = {
+        id: createId("zymix"),
+        threadId: input.threadId,
+        userId,
+        text: input.text,
+        createdAt: nowIso()
+      };
+
+      const { data, error } = await client
+        .from("zymix_messages")
+        .insert(mapZymixMessageDomainToRow(message))
+        .select()
+        .single();
+
+      if (error) {
+        if (isMissingSupabaseTableError(error, "zymix_messages")) {
+          return createDemoStore().createZymixMessage(userId, input);
+        }
+
+        throw new Error(`Failed to create Zymix message: ${error.message}`);
+      }
+
+      return mapZymixMessageRowToDomain(data as ZymixMessageRow);
+    },
+    async getLatestZymixMessages(threadIds) {
+      await ensureSupabaseSeeded(client);
+
+      const result: Record<string, ZymixMessage | null> = {};
+      for (const threadId of threadIds) {
+        result[threadId] = null;
+      }
+      if (threadIds.length === 0) {
+        return result;
+      }
+
+      const { data, error } = await client
+        .from("zymix_messages")
+        .select("*")
+        .in("thread_id", threadIds)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        if (isMissingSupabaseTableError(error, "zymix_messages")) {
+          return createDemoStore().getLatestZymixMessages(threadIds);
+        }
+
+        throw new Error(`Failed to load latest Zymix messages: ${error.message}`);
+      }
+
+      for (const row of (data ?? []) as ZymixMessageRow[]) {
+        if (result[row.thread_id] === null) {
+          result[row.thread_id] = mapZymixMessageRowToDomain(row);
+        }
+      }
+
+      return result;
     }
   };
 }
@@ -358,8 +536,10 @@ function getDemoState(): DemoState {
       criteria: structuredClone(seededCriteria),
       recommendations: structuredClone(seededRecommendations),
       messages: structuredClone(seededMessages),
+      zymixMessages: structuredClone(seededZymixMessages),
       tasks: [],
-      bucketItems: structuredClone(seededBucketItems)
+      bucketItems: structuredClone(seededBucketItems),
+      bucketItemEmbeddings: []
     };
   }
 
@@ -388,12 +568,23 @@ async function ensureSupabaseSeeded(client: SupabaseClient): Promise<void> {
   }
 
   globalThis.__seablingsSupabaseSeedPromise = (async () => {
-    const { count, error } = await client.from("personas").select("*", { head: true, count: "exact" });
-    if (error) {
-      throw new Error(`Failed to inspect Supabase seed state: ${error.message}`);
+    const [
+      { count: personaCount, error: personasError },
+      { count: criteriaCount, error: criteriaError }
+    ] = await Promise.all([
+      client.from("personas").select("*", { head: true, count: "exact" }),
+      client.from("planner_criteria").select("*", { head: true, count: "exact" })
+    ]);
+
+    if (personasError) {
+      throw new Error(`Failed to inspect Supabase persona seed state: ${personasError.message}`);
     }
 
-    if ((count ?? 0) > 0) {
+    if (criteriaError) {
+      throw new Error(`Failed to inspect Supabase criteria seed state: ${criteriaError.message}`);
+    }
+
+    if ((personaCount ?? 0) >= personas.length && (criteriaCount ?? 0) >= seededCriteria.length) {
       return;
     }
 
@@ -448,6 +639,22 @@ async function runSupabaseSeed(client: SupabaseClient): Promise<void> {
     throw new Error(`Failed to seed messages: ${messagesError.message}`);
   }
 
+  const { error: zymixMessagesError } = await client.from("zymix_messages").upsert(
+    seededZymixMessages.map((message) => ({
+      id: message.id,
+      thread_id: message.threadId,
+      user_id: message.userId,
+      text: message.text,
+      created_at: message.createdAt
+    }) satisfies ZymixMessageRow),
+    { onConflict: "id" }
+  );
+  if (zymixMessagesError) {
+    if (!isMissingSupabaseTableError(zymixMessagesError, "zymix_messages")) {
+      throw new Error(`Failed to seed Zymix messages: ${zymixMessagesError.message}`);
+    }
+  }
+
   const { error: bucketItemsError } = await client.from("bucket_items").upsert(
     seededBucketItems.map((item) => mapBucketItemDomainToRow(item)),
     { onConflict: "id" }
@@ -468,6 +675,39 @@ async function runSupabaseSeed(client: SupabaseClient): Promise<void> {
   if (recommendationsError) {
     throw new Error(`Failed to seed recommendations: ${recommendationsError.message}`);
   }
+}
+
+function createBucketItemDomainModel(input: ManualBucketItemInput, timestamp: string): BucketItem {
+  return {
+    id: createId("item"),
+    userId: input.userId,
+    status: input.status ?? "candidate",
+    dateType: input.dateType ?? "anytime",
+    title: input.title,
+    category: input.category,
+    description: input.description,
+    whyInteresting: input.whyInteresting,
+    locationName: input.locationName,
+    neighborhood: input.neighborhood,
+    address: input.address,
+    postalCode: input.postalCode,
+    priceEstimate: normalizePriceEstimate(input.priceEstimate),
+    estimatedCost: normalizeEstimatedCost(input.estimatedCost),
+    openingHours: input.openingHours,
+    websiteUrl: input.websiteUrl,
+    sourceUrl: input.sourceUrl,
+    sourceType: input.sourceType ?? "manual",
+    enrichmentProvider: normalizeOptionalText(input.enrichmentProvider),
+    enrichmentStatus: normalizeEnrichmentStatus(input.enrichmentStatus),
+    enrichmentSourceLinks: normalizeStringArray(input.enrichmentSourceLinks),
+    enrichmentConfidenceNote: normalizeOptionalText(input.enrichmentConfidenceNote),
+    tags: normalizeStringArray(input.tags),
+    confidence: normalizeConfidence(input.confidence),
+    startsAt: input.startsAt,
+    endsAt: input.endsAt,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
 }
 
 function mapTaskDomainToRow(task: IngestionTask): IngestionTaskRow {
@@ -518,6 +758,10 @@ function mapBucketItemDomainToRow(item: BucketItem): BucketItemRow {
     website_url: item.websiteUrl ?? null,
     source_url: item.sourceUrl ?? null,
     source_type: item.sourceType,
+    enrichment_provider: item.enrichmentProvider ?? null,
+    enrichment_status: item.enrichmentStatus ?? null,
+    enrichment_source_links: item.enrichmentSourceLinks ?? [],
+    enrichment_confidence_note: item.enrichmentConfidenceNote ?? null,
     tags: item.tags,
     confidence: item.confidence,
     starts_at: item.startsAt ?? null,
@@ -541,18 +785,42 @@ function mapBucketItemRowToDomain(row: BucketItemRow): BucketItem {
     neighborhood: row.neighborhood,
     address: row.address ?? undefined,
     postalCode: row.postal_code ?? undefined,
-    priceEstimate: row.price_estimate,
+    priceEstimate: normalizePriceEstimate(row.price_estimate),
     estimatedCost: row.estimated_cost,
     openingHours: row.opening_hours ?? undefined,
     websiteUrl: row.website_url ?? undefined,
     sourceUrl: row.source_url ?? undefined,
     sourceType: row.source_type as SourcePlatform,
-    tags: row.tags ?? [],
+    enrichmentProvider: normalizeOptionalText(row.enrichment_provider),
+    enrichmentStatus: normalizeEnrichmentStatus(row.enrichment_status),
+    enrichmentSourceLinks: normalizeStringArray(row.enrichment_source_links),
+    enrichmentConfidenceNote: normalizeOptionalText(row.enrichment_confidence_note),
+    tags: normalizeStringArray(row.tags),
     confidence: row.confidence,
     startsAt: row.starts_at ?? undefined,
     endsAt: row.ends_at ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at
+  };
+}
+
+function mapZymixMessageDomainToRow(message: ZymixMessage): ZymixMessageRow {
+  return {
+    id: message.id,
+    thread_id: message.threadId,
+    user_id: message.userId,
+    text: message.text,
+    created_at: message.createdAt
+  };
+}
+
+function mapZymixMessageRowToDomain(row: ZymixMessageRow): ZymixMessage {
+  return {
+    id: row.id,
+    threadId: row.thread_id,
+    userId: row.user_id as ZymixMessage["userId"],
+    text: row.text,
+    createdAt: row.created_at
   };
 }
 
@@ -568,4 +836,47 @@ function sortNewest<T extends { updatedAt: string }>(items: T[]): T[] {
   return [...items].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
-export type { BackendStore, StoreMode };
+function sortByCreatedAtAscending<T extends { createdAt: string }>(items: T[]): T[] {
+  return [...items].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+}
+
+function formatVector(values: number[]): string {
+  return `[${values.map((value) => (Number.isFinite(value) ? value : 0)).join(",")}]`;
+}
+
+function normalizeEstimatedCost(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+}
+
+function normalizeConfidence(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0.7;
+  }
+
+  return Math.max(0, Math.min(1, value));
+}
+
+function normalizeOptionalText(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function isMissingSupabaseTableError(error: { code?: string; message?: string } | null, table: string): boolean {
+  if (!error) {
+    return false;
+  }
+
+  const message = error.message ?? "";
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    message.includes(`'public.${table}'`) ||
+    message.includes(`relation "${table}" does not exist`)
+  );
+}
+
+export type { BackendStore, BucketItemEmbeddingInput, StoreMode };

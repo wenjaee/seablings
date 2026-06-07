@@ -1,11 +1,15 @@
-import type {
-  BucketCategory,
-  BucketItemDateType,
-  BucketItemStatus,
-  CapturePayload,
-  IngestionTaskStatus,
-  PersonaId,
-  SourcePlatform
+import {
+  bucketItemEnrichmentStatusValues,
+  bucketCategoryValues,
+  type BucketCategory,
+  type BucketItemDateType,
+  type BucketItemEnrichmentStatus,
+  type BucketItemStatus,
+  type CapturePayload,
+  type IngestionTaskStatus,
+  type PersonaId,
+  type PriceEstimateTier,
+  type SourcePlatform
 } from "@/lib/domain";
 import { personas } from "@/lib/fixtures";
 
@@ -29,18 +33,9 @@ const bucketItemStatuses = new Set<BucketItemStatus>([
   "rejected",
   "archived"
 ]);
-const bucketCategories = new Set<BucketCategory>([
-  "eats",
-  "drinks",
-  "cafe",
-  "nightlife",
-  "activity",
-  "culture",
-  "hidden_gem",
-  "market",
-  "other"
-]);
+const bucketCategories = new Set<BucketCategory>(bucketCategoryValues);
 const bucketItemDateTypes = new Set<BucketItemDateType>(["anytime", "one_off", "limited_run", "scheduled"]);
+const bucketItemEnrichmentStatuses = new Set<BucketItemEnrichmentStatus>(bucketItemEnrichmentStatusValues);
 
 export type ListCaptureFilters = {
   userId?: PersonaId;
@@ -61,6 +56,10 @@ export type ManualBucketItemInput = {
   locationName: string;
   neighborhood: string;
   priceEstimate: string;
+  enrichmentProvider?: string;
+  enrichmentStatus?: BucketItemEnrichmentStatus;
+  enrichmentSourceLinks?: string[];
+  enrichmentConfidenceNote?: string;
   status?: BucketItemStatus;
   dateType?: BucketItemDateType;
   address?: string;
@@ -74,6 +73,20 @@ export type ManualBucketItemInput = {
   confidence?: number;
   startsAt?: string;
   endsAt?: string;
+};
+
+export type DemoLoginInput = {
+  personaId: PersonaId;
+  pin: string;
+};
+
+export type ListZymixMessageFilters = {
+  threadId: string;
+};
+
+export type CreateZymixMessageInput = {
+  threadId: string;
+  text: string;
 };
 
 export function isPersonaId(value: unknown): value is PersonaId {
@@ -208,7 +221,7 @@ export function parseManualBucketItemInput(value: unknown): ManualBucketItemInpu
   const whyInteresting = requiredString(value.whyInteresting, "whyInteresting");
   const locationName = requiredString(value.locationName, "locationName");
   const neighborhood = requiredString(value.neighborhood, "neighborhood");
-  const priceEstimate = requiredString(value.priceEstimate, "priceEstimate");
+  const priceEstimate = normalizePriceEstimate(requiredString(value.priceEstimate, "priceEstimate"));
 
   if (typeof value.category !== "string" || !bucketCategories.has(value.category as BucketCategory)) {
     throw new ValidationError("Bucket item requires a valid category.");
@@ -229,6 +242,11 @@ export function parseManualBucketItemInput(value: unknown): ManualBucketItemInpu
     throw new ValidationError("Bucket item sourceType is invalid.");
   }
 
+  const enrichmentStatus = normalizeEnrichmentStatus(value.enrichmentStatus);
+  if (value.enrichmentStatus !== undefined && !enrichmentStatus) {
+    throw new ValidationError("Bucket item enrichmentStatus is invalid.");
+  }
+
   return {
     userId: value.userId,
     title,
@@ -238,6 +256,10 @@ export function parseManualBucketItemInput(value: unknown): ManualBucketItemInpu
     neighborhood,
     priceEstimate,
     category: value.category as BucketCategory,
+    enrichmentProvider: optionalString(value.enrichmentProvider),
+    enrichmentStatus,
+    enrichmentSourceLinks: normalizeStringArray(value.enrichmentSourceLinks),
+    enrichmentConfidenceNote: optionalString(value.enrichmentConfidenceNote),
     status: status ?? "candidate",
     dateType: (dateType as BucketItemDateType | undefined) ?? "anytime",
     address: optionalString(value.address),
@@ -254,12 +276,165 @@ export function parseManualBucketItemInput(value: unknown): ManualBucketItemInpu
   };
 }
 
+export function parseDemoLoginInput(value: unknown): DemoLoginInput {
+  if (!isRecord(value)) {
+    throw new ValidationError("Login payload must be a JSON object.");
+  }
+
+  if (!isPersonaId(value.personaId)) {
+    throw new ValidationError("Login requires a valid personaId.");
+  }
+
+  const pin = normalizePin(value.pin);
+  if (!pin) {
+    throw new ValidationError("Login requires a valid PIN.");
+  }
+
+  return {
+    personaId: value.personaId,
+    pin
+  };
+}
+
+export function parseZymixMessageFilters(searchParams: URLSearchParams): ListZymixMessageFilters {
+  const threadId = parseThreadId(searchParams.get("threadId"));
+
+  if (!threadId) {
+    throw new ValidationError("threadId is required.");
+  }
+
+  return { threadId };
+}
+
+export function parseThreadIdList(value: string | null): string[] {
+  if (!value) {
+    return [];
+  }
+
+  const ids: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of value.split(",")) {
+    const threadId = parseThreadId(raw);
+    if (threadId && !seen.has(threadId)) {
+      seen.add(threadId);
+      ids.push(threadId);
+    }
+
+    if (ids.length >= 50) {
+      break;
+    }
+  }
+
+  return ids;
+}
+
+export function parseCreateZymixMessageInput(value: unknown): CreateZymixMessageInput {
+  if (!isRecord(value)) {
+    throw new ValidationError("Zymix message payload must be a JSON object.");
+  }
+
+  const threadId = parseThreadId(value.threadId);
+  if (!threadId) {
+    throw new ValidationError("Zymix message requires a valid threadId.");
+  }
+
+  const text = normalizeMessageText(value.text);
+  if (!text) {
+    throw new ValidationError("Zymix message requires non-empty text.");
+  }
+
+  return { threadId, text };
+}
+
+export function normalizePriceEstimate(value: unknown): PriceEstimateTier {
+  if (typeof value !== "string") {
+    return "$$";
+  }
+
+  const trimmed = value.trim();
+  if (trimmed === "$" || trimmed === "$$" || trimmed === "$$$") {
+    return trimmed;
+  }
+
+  const currencyRunLengths = Array.from(trimmed.matchAll(/[$£€]+/g), (match) => match[0].length);
+  const longestCurrencyRun = currencyRunLengths.length > 0 ? Math.max(...currencyRunLengths) : 0;
+  if (longestCurrencyRun >= 3) {
+    return "$$$";
+  }
+  if (longestCurrencyRun === 2) {
+    return "$$";
+  }
+  if (longestCurrencyRun === 1) {
+    return "$";
+  }
+
+  if (/\b(free|cheap|budget|affordable|low[- ]cost)\b/i.test(trimmed)) {
+    return "$";
+  }
+
+  if (/\b(luxury|expensive|upscale|premium|fine dining)\b/i.test(trimmed)) {
+    return "$$$";
+  }
+
+  return "$$";
+}
+
+export function normalizeEnrichmentStatus(value: unknown): BucketItemEnrichmentStatus | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  return bucketItemEnrichmentStatuses.has(value as BucketItemEnrichmentStatus)
+    ? (value as BucketItemEnrichmentStatus)
+    : undefined;
+}
+
 function requiredString(value: unknown, fieldName: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new ValidationError(`Bucket item requires ${fieldName}.`);
   }
 
   return value.trim();
+}
+
+function normalizePin(value: unknown): string | null {
+  if (typeof value === "number" && Number.isInteger(value)) {
+    return value.toString();
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const pin = value.trim();
+  return pin.length > 0 ? pin : null;
+}
+
+function parseThreadId(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const threadId = value.trim();
+  if (threadId.length === 0 || threadId.length > 120) {
+    return null;
+  }
+
+  return threadId;
+}
+
+function normalizeMessageText(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const text = value.trim();
+  if (text.length === 0 || text.length > 1000) {
+    return null;
+  }
+
+  return text;
 }
 
 function optionalString(value: unknown): string | undefined {
@@ -292,6 +467,10 @@ function normalizeTags(value: unknown): string[] {
     .filter((item): item is string => typeof item === "string")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+export function normalizeStringArray(value: unknown): string[] {
+  return normalizeTags(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

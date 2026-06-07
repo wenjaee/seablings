@@ -1,13 +1,42 @@
-import { Bookmark, MapPin, Radio, Sparkles } from "lucide-react";
+import { Bookmark, Clock3, MapPin, Radio, Sparkles } from "lucide-react";
 
 import type { BucketItem, Persona } from "@/lib/domain";
-import { formatMoney, getSourceLabel, getStatusLabel } from "@/lib/demo/data";
+import { getSourceLabel, getStatusLabel } from "@/lib/demo/data";
 import { Panel, Pill } from "@/components/demo/primitives";
 
 type BucketPanelProps = {
   persona: Persona;
   items: BucketItem[];
 };
+
+function getDisplayPriceTier(item: BucketItem): "$" | "$$" | "$$$" {
+  const normalizedPrice = item.priceEstimate.trim();
+  const tokens = normalizedPrice.match(/free|\$+|£+/gi) ?? [];
+  const tokenTier = Math.max(
+    ...tokens.map((token) => {
+      if (/free/i.test(token)) {
+        return 0;
+      }
+
+      return token.length;
+    }),
+    0
+  );
+
+  if (tokenTier >= 3 || item.estimatedCost >= 40) {
+    return "$$$";
+  }
+
+  if (tokenTier >= 2 || item.estimatedCost >= 25) {
+    return "$$";
+  }
+
+  if (tokenTier >= 1 || item.estimatedCost > 0) {
+    return "$";
+  }
+
+  return "$$";
+}
 
 export function BucketPanel({ persona, items }: BucketPanelProps) {
   return (
@@ -37,8 +66,8 @@ export function BucketPanel({ persona, items }: BucketPanelProps) {
                   <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{item.description}</p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="text-sm font-semibold text-[var(--ink)]">{item.priceEstimate}</p>
-                  <p className="text-xs text-[var(--muted)]">{formatMoney(item.estimatedCost)}</p>
+                  <p className="text-sm font-semibold text-[var(--ink)]">{getDisplayPriceTier(item)}</p>
+                  <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Price tier</p>
                 </div>
               </div>
 
@@ -55,6 +84,12 @@ export function BucketPanel({ persona, items }: BucketPanelProps) {
                   <Sparkles size={13} aria-hidden="true" />
                   {getSourceLabel(item.sourceType)}
                 </span>
+                {item.openingHours ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock3 size={13} aria-hidden="true" />
+                    {item.openingHours}
+                  </span>
+                ) : null}
               </div>
 
               <p className="mt-3 text-sm leading-6 text-[var(--ink)]">{item.whyInteresting}</p>
