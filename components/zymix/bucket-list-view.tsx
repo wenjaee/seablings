@@ -13,9 +13,22 @@ type VisitedFilter = "all" | "not_visited" | "visited";
 export function BucketListView({ items: initial }: { items: BucketItem[] }) {
   const [items, setItems] = useState(initial);
   const [selectedItem, setSelectedItem] = useState<BucketItem | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [priceTiers, setPriceTiers] = useState<Set<PriceTier>>(new Set());
   const [visitedFilter, setVisitedFilter] = useState<VisitedFilter>("all");
   const [openNow, setOpenNow] = useState(false);
+
+  const openSheet = (item: BucketItem) => {
+    setSelectedItem(item);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => setSheetOpen(true))
+    );
+  };
+
+  const closeSheet = useCallback(() => {
+    setSheetOpen(false);
+    setTimeout(() => setSelectedItem(null), 300);
+  }, []);
 
   const togglePriceTier = (tier: PriceTier) => {
     setPriceTiers((prev) => {
@@ -132,7 +145,7 @@ export function BucketListView({ items: initial }: { items: BucketItem[] }) {
                 <div className="min-w-0 flex-1">
                   <button
                     type="button"
-                    onClick={() => setSelectedItem(item)}
+                    onClick={() => openSheet(item)}
                     className="w-full text-left"
                   >
                     <p className="text-[14px] font-semibold text-[var(--zx-ink)]">{item.title}</p>
@@ -159,7 +172,8 @@ export function BucketListView({ items: initial }: { items: BucketItem[] }) {
       {selectedItem && (
         <ItemSheet
           item={selectedItem}
-          onClose={() => setSelectedItem(null)}
+          isOpen={sheetOpen}
+          onClose={closeSheet}
           onToggleVisited={() => toggleVisited(selectedItem)}
         />
       )}
@@ -191,10 +205,12 @@ function Checkmark({ visited }: { visited: boolean }) {
 
 function ItemSheet({
   item,
+  isOpen,
   onClose,
   onToggleVisited,
 }: {
   item: BucketItem;
+  isOpen: boolean;
   onClose: () => void;
   onToggleVisited: () => void;
 }) {
@@ -210,10 +226,14 @@ function ItemSheet({
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} aria-hidden />
+      <div
+        className={`fixed inset-0 z-40 bg-black/30 transition-opacity duration-300 ${isOpen ? "opacity-100" : "opacity-0"}`}
+        onClick={onClose}
+        aria-hidden
+      />
 
       {/* Sheet panel */}
-      <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[430px] rounded-t-3xl bg-white px-5 pb-10 pt-7 shadow-2xl">
+      <div className={`fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[430px] rounded-t-3xl bg-white px-5 pb-10 pt-7 shadow-2xl transition-transform duration-300 ease-out ${isOpen ? "translate-y-0" : "translate-y-full"}`}>
         {/* Drag handle */}
         <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-[var(--zx-line)]" />
 
