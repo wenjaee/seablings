@@ -101,3 +101,70 @@ a {
 .zx-backdrop-enter {
   animation: zx-fade-in 240ms ease-out;
 }
+
+/* Planner bottom-sheet entrance */
+@keyframes planner-sheet-in {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.planner-sheet-in {
+  animation: planner-sheet-in 340ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+/* Celebration pop + confetti */
+@keyframes planner-pop-in {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.planner-pop-in {
+  animation: planner-pop-in 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes planner-confetti-fall {
+  0% {
+    transform: translate3d(0, -28px, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--drift, 0px), 760px, 0) rotate(var(--spin, 540deg));
+    opacity: 0;
+  }
+}
+
+.planner-confetti {
+  animation: planner-confetti-fall var(--dur, 2600ms) linear var(--delay, 0ms) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-sheet-in {
+    animation: none;
+  }
+  .planner-pop-in {
+    animation: none;
+  }
+  .planner-confetti {
+    display: none;
+  }
+}

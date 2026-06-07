@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 
+import { PlannerProvider } from "@/components/planner/planner-provider";
 import { GroupChat } from "@/components/zymix/group-chat";
 import { PhoneShell } from "@/components/zymix/phone-shell";
 
@@ -9,7 +10,9 @@ export default async function ChatThreadPage({ params }: { params: Promise<{ id:
   return (
     <PhoneShell>
       <Suspense fallback={null}>
-        <GroupChat key={id} chatId={id} />
+        <PlannerProvider groupId={id}>
+          <GroupChat key={id} chatId={id} />
+        </PlannerProvider>
       </Suspense>
     </PhoneShell>
   );

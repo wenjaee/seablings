@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ArrowLeft, BadgeCheck, Camera, Mic, MoreHorizontal, Plus, RefreshCcw, Send, Sticker } from "lucide-react";
 import { type RealtimeChannel } from "@supabase/supabase-js";
 
+import { PlannerCelebration, PlannerDock, PlannerThread } from "@/components/planner/planner-layer";
+import { usePlanner } from "@/components/planner/planner-provider";
 import { Avatar } from "@/components/zymix/avatar";
 import { useCurrentPersona } from "@/components/zymix/persona-session";
 import { getBrowserSupabaseClient } from "@/lib/zymix/supabase-browser";
@@ -250,7 +252,8 @@ function ChatView({
   }, [messages]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <PlannerCelebration />
       <header className="flex shrink-0 items-center gap-2 px-3 pb-2 pt-1">
         <Link
           href="/"
@@ -327,9 +330,11 @@ function ChatView({
             </div>
           )
         )}
+        <PlannerThread />
         <div ref={endRef} />
       </div>
 
+      <PlannerDock />
       <MessageComposer draft={draft} setDraft={setDraft} hasDraft={hasDraft} send={send} isSending={isSending} />
     </div>
   );
@@ -338,6 +343,7 @@ function ChatView({
 export function GroupChat({ chatId }: { chatId: string }) {
   const { persona, isLoading, error: sessionError } = useCurrentPersona({ redirectToLogin: true });
   const personaId = persona?.id;
+  const { start } = usePlanner();
   const thread = useMemo(() => (personaId ? getThreadData(chatId, personaId) : null), [chatId, personaId]);
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -458,6 +464,10 @@ export function GroupChat({ chatId }: { chatId: string }) {
     const text = draft.trim();
     if (!text) {
       return;
+    }
+
+    if (text.toLowerCase().includes("@planner")) {
+      void start(persona.id);
     }
 
     const now = new Date();

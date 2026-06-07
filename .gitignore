@@ -18,4 +18,8 @@ gitnexus-out/
 
 # supabase
 supabase/.temp/
+
+# worktrees
+.worktrees/
+
 .vercel
