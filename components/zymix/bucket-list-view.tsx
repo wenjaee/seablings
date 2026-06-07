@@ -44,11 +44,14 @@ export function BucketListView({ items: initial }: { items: BucketItem[] }) {
       setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: next } : i)));
       setSelectedItem((prev) => (prev?.id === item.id ? { ...prev, status: next } : prev));
       try {
-        await fetch(`/api/bucket-items/${item.id}/status`, {
+        const response = await fetch(`/api/bucket-items/${item.id}/status`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: next }),
         });
+        if (!response.ok) {
+          throw new Error("Failed to update bucket item status.");
+        }
       } catch {
         setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: item.status } : i)));
         setSelectedItem((prev) => (prev?.id === item.id ? { ...prev, status: item.status } : prev));

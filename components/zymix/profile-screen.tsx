@@ -108,7 +108,10 @@ export function ProfileScreen() {
               <ChevronRight size={20} className="text-[var(--zx-faint)]" />
             </button>
 
-            <Link href={"/bucket-list" as Route} className="mt-3 flex w-full items-center gap-4 rounded-2xl bg-[var(--zx-surface)] px-4 py-4">
+            <Link
+              href={"/me/bucket-list" as Route}
+              className="mt-3 flex w-full items-center gap-4 rounded-2xl bg-[var(--zx-surface)] px-4 py-4"
+            >
               <ListChecks size={24} className="text-[var(--zx-ink)]" />
               <span className="text-[18px] font-semibold text-[var(--zx-ink)]">Bucket List</span>
               <ChevronRight size={20} className="ml-auto text-[var(--zx-faint)]" />
