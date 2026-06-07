@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, X } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Check } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { derivePriceTier } from "@/lib/bucket-ui";
@@ -207,86 +207,116 @@ function ItemSheet({
 }) {
   const visited = item.status === "completed";
   const tier = derivePriceTier(item.estimatedCost);
-  const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(item.postalCode ?? item.address ?? item.locationName)}`;
+  const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(item.address ?? item.neighborhood ?? item.locationName)}`;
+  const displayAddress = item.address ?? item.neighborhood;
+
+  const hoursRows: Array<{ day: string; hours: string | null }> =
+    item.openingHoursRows ??
+    (item.openingHours ? [{ day: "", hours: item.openingHours }] : []);
 
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-black/30"
-        onClick={onClose}
-        aria-hidden
-      />
-      {/* Sheet panel — centred, max phone width */}
-      <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[430px] rounded-t-3xl bg-[var(--zx-surface)] px-5 pb-10 pt-4 shadow-2xl">
-        <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-[var(--zx-line)]" />
+      <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} aria-hidden />
 
-        <div className="mb-3 flex items-start justify-between gap-2">
-          <h2 className="text-[20px] font-extrabold leading-tight text-[var(--zx-ink)]">
-            {item.title}
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Close">
-            <X size={20} className="text-[var(--zx-muted)]" />
-          </button>
-        </div>
+      {/* Sheet panel */}
+      <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[430px] rounded-t-3xl bg-white px-5 pb-10 pt-4 shadow-2xl">
+        {/* Drag handle */}
+        <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-[var(--zx-line)]" />
+
+        {/* Title */}
+        <h2 className="mb-3 text-[24px] font-extrabold leading-tight text-[var(--zx-ink)]">
+          {item.title}
+        </h2>
 
         {/* Chips row */}
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-[var(--zx-surface)] px-3 py-1 text-[11px] font-semibold text-[var(--zx-ink)]">
-            {tier}
-          </span>
+        <div className="mb-1 flex items-center gap-2">
           {item.sourceUrl ? (
             <a
               href={item.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 rounded-full bg-[var(--zx-ink)] px-3 py-1 text-[11px] font-semibold text-white"
+              className="flex items-center gap-1.5 rounded-full bg-[var(--zx-ink)] px-3 py-1 text-[12px] font-semibold text-white"
             >
+              <CalendarDays size={11} />
               {PLATFORM_LABEL[item.sourceType] ?? item.sourceType}
-              <ExternalLink size={10} />
             </a>
           ) : (
-            <span className="rounded-full bg-[var(--zx-surface)] px-3 py-1 text-[11px] font-semibold text-[var(--zx-muted)]">
+            <span className="flex items-center gap-1.5 rounded-full bg-[var(--zx-ink)] px-3 py-1 text-[12px] font-semibold text-white">
+              <CalendarDays size={11} />
               {PLATFORM_LABEL[item.sourceType] ?? item.sourceType}
             </span>
           )}
+          {item.openingHours && (
+            <span
+              className="rounded-full px-3 py-1 text-[12px] font-semibold"
+              style={{ background: "var(--zx-brand-soft)", color: "var(--zx-brand-deep)" }}
+            >
+              Open now
+            </span>
+          )}
+          <span className="ml-auto text-[13px] text-[var(--zx-faint)]">{tier}</span>
         </div>
+
+        {/* Divider */}
+        <div className="my-4 h-px bg-[var(--zx-line)]" />
 
         {/* Location */}
-        <div className="mb-3">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--zx-faint)]">
-            Location
-          </p>
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[14px] font-semibold"
-            style={{ color: "var(--zx-brand)" }}
-          >
-            {item.postalCode ?? item.address ?? item.neighborhood}
-          </a>
-        </div>
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--zx-muted)]">
+          Location
+        </p>
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-1 flex items-center gap-1 text-[15px] font-semibold"
+          style={{ color: "var(--zx-brand)" }}
+        >
+          {displayAddress}
+          <ArrowUpRight size={14} style={{ color: "var(--zx-brand)" }} />
+        </a>
+
+        {/* Divider */}
+        <div className="my-4 h-px bg-[var(--zx-line)]" />
 
         {/* Opening hours */}
-        {item.openingHours && (
-          <div className="mb-4">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--zx-faint)]">
-              Hours
+        {hoursRows.length > 0 && (
+          <>
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--zx-muted)]">
+              Opening hours
             </p>
-            <p className="text-[13px] text-[var(--zx-ink)]">{item.openingHours}</p>
-          </div>
+            <div className="mb-1 space-y-1.5">
+              {hoursRows.map(({ day, hours }) => (
+                <div key={day} className="flex items-baseline justify-between">
+                  <span className="text-[14px] text-[var(--zx-ink)]">{day}</span>
+                  {hours === null ? (
+                    <span className="text-[14px] text-[var(--zx-muted)]">Closed</span>
+                  ) : (
+                    <span className="text-[14px] font-bold text-[var(--zx-ink)]">{hours}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Divider */}
+            <div className="my-4 h-px bg-[var(--zx-line)]" />
+          </>
         )}
 
-        {/* Visited toggle */}
+        {/* Mark as visited */}
         <button
           type="button"
           onClick={onToggleVisited}
-          className="flex w-full items-center gap-3 rounded-2xl bg-[var(--zx-surface)] px-4 py-3"
+          className="flex w-full items-center justify-between py-1"
         >
-          <Checkmark visited={visited} />
           <span className="text-[15px] font-semibold text-[var(--zx-ink)]">
-            {visited ? "Visited ✓" : "Mark as visited"}
+            {visited ? "Visited" : "Mark as visited"}
+          </span>
+          <span
+            className="flex h-9 w-9 items-center justify-center rounded-full"
+            style={{ background: "var(--zx-brand)" }}
+          >
+            <Check size={18} strokeWidth={2.5} color="white" />
           </span>
         </button>
       </div>
