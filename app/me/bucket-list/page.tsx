@@ -36,7 +36,7 @@ export default async function BucketListLandingPage() {
 
   return (
     <PhoneShell>
-      <main className="zx-hide-scroll flex-1 overflow-y-auto px-4 pt-1">
+      <main className="zx-hide-scroll flex flex-1 flex-col overflow-y-auto px-4 pt-1">
         <div className="relative flex items-center py-3">
           <Link
             href="/me"
@@ -54,9 +54,9 @@ export default async function BucketListLandingPage() {
         </div>
 
         {populated.length === 0 ? (
-          <EmptyState />
+          <div className="flex-1 rounded-3xl bg-[#f5efe6]"><EmptyState /></div>
         ) : (
-          <div className="rounded-3xl bg-[#f5efe6] px-4 pb-8 pt-6">
+          <div className="flex-1 rounded-3xl bg-[#f5efe6] px-4 pb-8 pt-6">
             <div className="flex gap-3">
               <div className="flex flex-1 flex-col gap-2">
                 {left.map((cat) => (
