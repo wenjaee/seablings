@@ -3,14 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  CalendarPlus,
   Check,
   ChevronLeft,
   ChevronRight,
   Clock3,
   MapPinned,
-  PoundSterling,
-  Sparkles,
   Trophy
 } from "lucide-react";
 
@@ -31,6 +28,7 @@ export type PlannerItem = {
   category?: string | null;
   neighborhood?: string | null;
   locationName?: string | null;
+  photoUrl?: string | null;
   priceEstimate?: string | null;
   estimatedCost?: number | null;
   openingHours?: string | null;
@@ -199,10 +197,12 @@ function toPlannerRecommendationCard(recommendation: PlannerRecommendation): Pla
     budgetTier: getDisplayPriceTier(item),
     distanceLabel: recommendation.distanceLabel ?? undefined,
     mapsUrl: recommendation.mapsUrl ?? undefined,
+    photoUrl: item.photoUrl ?? undefined,
     item: {
       title: item.title,
       neighborhood: item.neighborhood ?? null,
-      locationName: item.locationName ?? null
+      locationName: item.locationName ?? null,
+      photoUrl: item.photoUrl ?? null
     }
   };
 }
@@ -218,10 +218,12 @@ function toPlannerWinnerCard(item: PlannerItem): PlannerRecommendationCard {
     address: item.locationName ?? item.neighborhood ?? undefined,
     emoji: categoryMeta.emoji,
     budgetTier: getDisplayPriceTier(item),
+    photoUrl: item.photoUrl ?? undefined,
     item: {
       title: item.title,
       neighborhood: item.neighborhood ?? null,
-      locationName: item.locationName ?? null
+      locationName: item.locationName ?? null,
+      photoUrl: item.photoUrl ?? null
     }
   };
 }
@@ -288,22 +290,6 @@ function getDisplayPriceTier(item: PlannerItem) {
   return "$$";
 }
 
-function getBudgetSummary(items: PlannerItem[]) {
-  if (items.length === 0) {
-    return "Budget flexible";
-  }
-
-  const tiers = Array.from(new Set(items.map((item) => getDisplayPriceTier(item))));
-  const costs = items.map((item) => item.estimatedCost).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-
-  if (costs.length === 0) {
-    return tiers.join(" / ");
-  }
-
-  const maxCost = Math.max(...costs);
-  return `${tiers.join(" / ")} · up to £${Math.round(maxCost)}`;
-}
-
 function getWinningItems(session: PlannerSession) {
   const finalPlanItems = session.finalPlan?.winningItems ?? [];
   if (finalPlanItems.length > 0) {
@@ -337,6 +323,9 @@ function getVoteCountEntries(session: PlannerSession) {
 function RecommendationCard({ recommendation, selected = false, onToggle, compact = false }: RecommendationCardProps) {
   const meta = getCategoryMeta(recommendation.item.category);
   const ownerPersona = recommendation.owner.id ? getZymixPersona(recommendation.owner.id) : null;
+  const [imageFailed, setImageFailed] = useState(false);
+  const photoUrl = recommendation.item.photoUrl ?? undefined;
+  const showPhoto = Boolean(photoUrl && !imageFailed);
 
   return (
     <article
@@ -348,11 +337,20 @@ function RecommendationCard({ recommendation, selected = false, onToggle, compac
     >
       <div className="flex items-start gap-3">
         <div
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-[20px]"
+          className="relative grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl text-[20px]"
           style={{ backgroundColor: meta.bg, color: meta.fg }}
           aria-hidden
         >
           <span>{meta.emoji}</span>
+          {showPhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photoUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+              onError={() => setImageFailed(true)}
+            />
+          ) : null}
         </div>
 
         <div className="min-w-0 flex-1">
@@ -645,7 +643,7 @@ export function PlannerCriteriaOverlay({
           <textarea
             value={vetoText}
             onChange={(event) => setVetoText(event.target.value)}
-            placeholder="Anything to avoid? (optional)"
+            placeholder="E.g. No alcohol, I don't want anywhere sunny"
             aria-label="Vetoes"
             rows={3}
             className="mt-3 w-full resize-y rounded-[18px] border border-black/8 bg-[var(--zx-surface)] px-4 py-3 text-[14px] leading-6 text-[var(--zx-ink)] outline-none placeholder:text-[var(--zx-muted)]"
@@ -790,7 +788,6 @@ export function PlannerSpectatorNotice({ session }: { session: PlannerSession })
 export function PlannerStateCard({
   session,
   currentPersonaId,
-  showCelebration,
   canCancel = false,
   isCanceling = false,
   cancelError,
@@ -798,7 +795,6 @@ export function PlannerStateCard({
 }: {
   session: PlannerSession;
   currentPersonaId: ZymixPersonaId;
-  showCelebration: boolean;
   canCancel?: boolean;
   isCanceling?: boolean;
   cancelError?: string | null;
@@ -812,13 +808,15 @@ export function PlannerStateCard({
   const participantCount = session.participants.length;
   const missingCriteria = session.participants.filter((participantId) => !session.criteriaByUserId[participantId]);
   const missingVotes = session.participants.filter((participantId) => !session.votesByUserId[participantId]);
-  const winningItems = getWinningItems(session);
-  const voteEntries = getVoteCountEntries(session);
   const aggregateCriteria = session.aggregateCriteria;
   const aggregateAvailability = getAggregateAvailability(aggregateCriteria);
   const aggregateBudget = getBudgetDisplay(aggregateCriteria);
   const aggregateVetoes = getAggregateVetoesText(aggregateCriteria);
   const shouldShowAggregateCriteria = Boolean(aggregateAvailability || aggregateBudget || aggregateVetoes);
+
+  if (session.status === "completed") {
+    return null;
+  }
 
   return (
     <section className="mb-4 rounded-[28px] border border-black/6 bg-white px-4 py-4 shadow-[0_14px_28px_rgba(15,23,42,0.08)]">
@@ -830,19 +828,15 @@ export function PlannerStateCard({
               ? "Collecting criteria"
               : session.status === "voting"
                 ? "Shortlist ready"
-                : session.status === "canceled"
-                  ? "Planner canceled"
-                  : "Plan locked in"}
+                : "Planner canceled"}
           </h2>
         </div>
         <div className="flex flex-col items-end gap-2">
           <span
             className={
-              session.status === "completed"
-                ? "rounded-full bg-[#dff7de] px-3 py-1 text-[12px] font-semibold text-[#1d7a46]"
-                : session.status === "canceled"
-                  ? "rounded-full bg-[#ffe6e2] px-3 py-1 text-[12px] font-semibold text-[#b42318]"
-                  : "rounded-full bg-[var(--zx-surface)] px-3 py-1 text-[12px] font-semibold text-[var(--zx-muted)]"
+              session.status === "canceled"
+                ? "rounded-full bg-[#ffe6e2] px-3 py-1 text-[12px] font-semibold text-[#b42318]"
+                : "rounded-full bg-[var(--zx-surface)] px-3 py-1 text-[12px] font-semibold text-[var(--zx-muted)]"
             }
           >
             {session.status}
@@ -949,101 +943,6 @@ export function PlannerStateCard({
         </div>
       ) : null}
 
-      {session.status === "completed" ? (
-        <div className="mt-4 space-y-4">
-          {shouldShowAggregateCriteria ? (
-            <div className="rounded-[22px] bg-[var(--zx-surface)] px-4 py-3">
-              <p className="text-[12px] text-[var(--zx-muted)]">Session criteria</p>
-              {aggregateAvailability ? <p className="mt-1.5 break-words text-[14px] font-medium text-[var(--zx-ink)]">Availability: {aggregateAvailability}</p> : null}
-              {aggregateBudget ? <p className="mt-1.5 text-[14px] text-[var(--zx-ink)]">Budget: {aggregateBudget}</p> : null}
-              {aggregateVetoes ? <p className="mt-1.5 break-words text-[14px] text-[var(--zx-ink)]">Vetoes: {aggregateVetoes}</p> : null}
-            </div>
-          ) : null}
-
-          {showCelebration ? (
-            <div className="rounded-[22px] bg-[#f0ffee] px-4 py-3 text-[#1d7a46]">
-              <p className="inline-flex items-center gap-2 text-[14px] font-semibold">
-                <Sparkles size={16} aria-hidden />
-                Planner settled it.
-              </p>
-            </div>
-          ) : null}
-
-          <div className="rounded-[22px] bg-[var(--zx-surface)] px-4 py-3">
-            <p className="text-[13px] text-[var(--zx-muted)]">Final plan</p>
-            <p className="mt-1 text-[20px] font-semibold text-[var(--zx-ink)]">
-              {winningItems.length > 1 ? "Joint winners" : "Winner"}: {winningItems.map((item) => item.title).join(" + ")}
-            </p>
-            {session.finalPlan?.proposedTime ?? session.proposedTime ? (
-              <p className="mt-2 inline-flex items-center gap-2 text-[13px] text-[var(--zx-muted)]">
-                <Clock3 size={14} aria-hidden />
-                {session.finalPlan?.proposedTime ?? session.proposedTime}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="space-y-3">
-            {winningItems.map((item) => (
-              <article key={item.id} className="rounded-[22px] border border-black/6 bg-white px-4 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[16px] font-semibold text-[var(--zx-ink)]">{item.title}</p>
-                    <p className="mt-1 text-[13px] text-[var(--zx-muted)]">{getAreaLabel(item)}</p>
-                  </div>
-                  <div className="rounded-full bg-[var(--zx-surface)] px-3 py-1 text-[12px] font-semibold text-[var(--zx-ink)]">
-                    {getDisplayPriceTier(item)}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-[22px] bg-[var(--zx-surface)] px-4 py-3">
-              <p className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--zx-faint)]">
-                <MapPinned size={12} aria-hidden />
-                Where
-              </p>
-              <p className="mt-2 text-[14px] text-[var(--zx-ink)]">{winningItems.map((item) => getAreaLabel(item)).join(" + ") || "TBD"}</p>
-            </div>
-            <div className="rounded-[22px] bg-[var(--zx-surface)] px-4 py-3">
-              <p className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--zx-faint)]">
-                <PoundSterling size={12} aria-hidden />
-                Budget
-              </p>
-              <p className="mt-2 text-[14px] text-[var(--zx-ink)]">{getBudgetSummary(winningItems)}</p>
-            </div>
-          </div>
-
-          {voteEntries.length > 0 ? (
-            <div>
-              <p className="mb-2 inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--zx-faint)]">
-                <Trophy size={12} aria-hidden />
-                Vote counts
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {voteEntries.map((entry) => (
-                  <span key={entry.bucketItemId} className="rounded-full bg-white px-3 py-1.5 text-[12px] font-medium text-[var(--zx-ink)] shadow-[0_6px_16px_rgba(15,23,42,0.05)]">
-                    {entry.title}: {entry.count}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {session.finalPlan?.calendarUrl ? (
-            <a
-              href={session.finalPlan.calendarUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--zx-brand)] px-5 text-[14px] font-semibold text-white"
-            >
-              <CalendarPlus size={16} aria-hidden />
-              Add to Calendar
-            </a>
-          ) : null}
-        </div>
-      ) : null}
     </section>
   );
 }
@@ -1106,14 +1005,18 @@ export function PlannerThread({
   isCanceling,
   canCancel,
   cancelError,
-  onCancel
+  isMinimized = false,
+  onCancel,
+  onConfirmPlan
 }: {
   session: PlannerSession;
   currentPersonaId: ZymixPersonaId;
   isCanceling: boolean;
   canCancel: boolean;
   cancelError?: string | null;
+  isMinimized?: boolean;
   onCancel?: () => Promise<void> | void;
+  onConfirmPlan?: () => void;
 }) {
   const isCollecting = session.status === "collecting";
   const isVoting = session.status === "voting";
@@ -1141,7 +1044,6 @@ export function PlannerThread({
       <PlannerStateCard
         session={session}
         currentPersonaId={currentPersonaId}
-        showCelebration={false}
         canCancel={canCancel}
         isCanceling={isCanceling}
         cancelError={cancelError ?? null}
@@ -1156,19 +1058,35 @@ export function PlannerThread({
         <PlannerWaitingBox title="Waiting for votes" members={votingMembers} doneLabel="voted" />
       ) : null}
 
-      {isCompleted ? (
+      {isCompleted && !isMinimized ? (
         <div className="space-y-2">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--zx-faint)]">Confirmed cards</p>
-          <PlannerConfirmationCompact session={session} />
+          <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--zx-faint)]">Confirmed plan</p>
+          <PlannerConfirmationCompact session={session} onConfirmPlan={onConfirmPlan} />
         </div>
       ) : null}
     </section>
   );
 }
 
-function PlannerConfirmationCompact({ session }: { session: PlannerSession }) {
+function PlannerConfirmationCompact({
+  session,
+  onConfirmPlan
+}: {
+  session: PlannerSession;
+  onConfirmPlan?: () => void;
+}) {
   const winningItems = getWinningItems(session);
   const voteEntries = getVoteCountEntries(session);
+  const calendarUrl = `/api/planner-session/calendar?threadId=${encodeURIComponent(session.threadId)}`;
+  const winnerCards = winningItems.map(toPlannerWinnerCard);
+  const combinedWinnerCard: PlannerRecommendationCard = {
+    bucketItemId: "final-plan",
+    name: winnerCards.map((winner) => winner.name).join(" + ") || "Final plan",
+    title: winnerCards.map((winner) => winner.title).join(" + ") || "Final plan",
+    area: Array.from(new Set(winnerCards.map((winner) => winner.area).filter(Boolean))).join(" + ") || "Area TBD",
+    budgetTier: Array.from(new Set(winnerCards.map((winner) => winner.budgetTier).filter(Boolean))).join(" / ") || "$$",
+    photoUrl: winnerCards.find((winner) => winner.photoUrl)?.photoUrl
+  };
 
   if (winningItems.length === 0 && voteEntries.length === 0) {
     return null;
@@ -1176,14 +1094,14 @@ function PlannerConfirmationCompact({ session }: { session: PlannerSession }) {
 
   return (
     <section className="space-y-2">
-      {winningItems.map((item) => (
+      {winningItems.length > 0 ? (
         <PlannerConfirmedPlanCard
-          key={item.id}
-          winner={toPlannerWinnerCard(item)}
+          winner={combinedWinnerCard}
           proposedTime={session.finalPlan?.proposedTime ?? session.proposedTime ?? undefined}
-          calendarUrl={session.finalPlan?.calendarUrl ?? undefined}
+          calendarUrl={calendarUrl}
+          onConfirm={onConfirmPlan}
         />
-      ))}
+      ) : null}
 
       {voteEntries.length > 0 ? (
         <div className="rounded-[20px] bg-[var(--zx-surface)] px-4 py-3">

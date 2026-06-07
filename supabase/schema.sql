@@ -46,6 +46,8 @@ create table if not exists bucket_items (
   estimated_cost integer not null default 0 check (estimated_cost >= 0),
   opening_hours text,
   website_url text,
+  photo_url text,
+  photo_source_links jsonb not null default '[]'::jsonb,
   source_url text,
   source_type text not null check (source_type in ('tiktok', 'instagram', 'screenshot', 'manual', 'text')),
   enrichment_provider text,
@@ -67,7 +69,9 @@ alter table if exists bucket_items
   add column if not exists enrichment_provider text,
   add column if not exists enrichment_status text check (enrichment_status in ('complete', 'partial', 'fallback')),
   add column if not exists enrichment_source_links jsonb not null default '[]'::jsonb,
-  add column if not exists enrichment_confidence_note text;
+  add column if not exists enrichment_confidence_note text,
+  add column if not exists photo_url text,
+  add column if not exists photo_source_links jsonb not null default '[]'::jsonb;
 
 create table if not exists bucket_item_embeddings (
   bucket_item_id text primary key references bucket_items(id) on delete cascade,

@@ -37,6 +37,7 @@ export type PlannerRecommendationCard = {
     title?: string;
     neighborhood?: string | null;
     locationName?: string | null;
+    photoUrl?: string | null;
   };
 };
 

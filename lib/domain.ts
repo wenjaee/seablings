@@ -85,6 +85,8 @@ export type BucketItem = {
   estimatedCost: number;
   openingHours?: string;
   websiteUrl?: string;
+  photoUrl?: string;
+  photoSourceLinks?: string[];
   sourceUrl?: string;
   sourceType: SourcePlatform;
   enrichmentProvider?: string;

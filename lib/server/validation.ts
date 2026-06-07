@@ -71,6 +71,8 @@ export type ManualBucketItemInput = {
   estimatedCost?: number;
   openingHours?: string;
   websiteUrl?: string;
+  photoUrl?: string;
+  photoSourceLinks?: string[];
   sourceUrl?: string;
   sourceType?: SourcePlatform;
   tags?: string[];
@@ -295,6 +297,8 @@ export function parseManualBucketItemInput(value: unknown): ManualBucketItemInpu
     postalCode: optionalString(value.postalCode),
     openingHours: optionalString(value.openingHours),
     websiteUrl: optionalString(value.websiteUrl),
+    photoUrl: optionalHttpUrl(value.photoUrl),
+    photoSourceLinks: normalizeHttpUrlArray(value.photoSourceLinks),
     sourceUrl: optionalString(value.sourceUrl),
     sourceType: (sourceType as SourcePlatform | undefined) ?? "manual",
     tags: normalizeTags(value.tags),
@@ -531,6 +535,47 @@ function normalizePin(value: unknown): string | null {
 
   const pin = value.trim();
   return pin.length > 0 ? pin : null;
+}
+
+function optionalHttpUrl(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  try {
+    const url = new URL(normalized);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeHttpUrlArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const links: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of value) {
+    const link = optionalHttpUrl(entry);
+    if (!link || seen.has(link)) {
+      continue;
+    }
+
+    seen.add(link);
+    links.push(link);
+    if (links.length >= 8) {
+      break;
+    }
+  }
+
+  return links.length > 0 ? links : undefined;
 }
 
 function parseThreadId(value: unknown): string | null {

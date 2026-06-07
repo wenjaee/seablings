@@ -162,7 +162,7 @@ export function PlannerCriteriaSheet({
         <textarea
           value={vetoesText}
           onChange={(event) => setVetoesText(event.target.value)}
-          placeholder="Avoid any of these (optional)"
+          placeholder="E.g. No alcohol, I don't want anywhere sunny"
           aria-label="Vetoes"
           rows={2}
           className="mt-2 w-full resize-y rounded-xl bg-white px-3 py-2 text-[14px] leading-6 text-[var(--zx-ink)] outline-none placeholder:text-[var(--zx-muted)]"

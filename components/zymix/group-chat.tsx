@@ -248,6 +248,56 @@ function ErrorState({ message }: { message: string }) {
   return <p className="px-4 pt-8 text-center text-[15px] text-[#d94c3d]">{message}</p>;
 }
 
+function getPlannerStorageKey(sessionId: string) {
+  return `zymix-planner-minimized:${sessionId}`;
+}
+
+function getPlannerWinningItems(session: PlannerSession) {
+  const finalPlanItems = session.finalPlan?.winningItems ?? [];
+  if (finalPlanItems.length > 0) {
+    return finalPlanItems;
+  }
+
+  const winnerIds = session.finalPlan?.winnerIds ?? [];
+  if (winnerIds.length === 0) {
+    return [];
+  }
+
+  return winnerIds
+    .map((winnerId) => session.recommendations.find((recommendation) => recommendation.bucketItemId === winnerId)?.item)
+    .filter((item): item is NonNullable<PlannerSession["finalPlan"]>["winningItems"][number] => Boolean(item));
+}
+
+function PlannerMinimizedBanner({
+  session,
+  onExpand
+}: {
+  session: PlannerSession;
+  onExpand: () => void;
+}) {
+  const winningItems = getPlannerWinningItems(session);
+  const planLabel = winningItems.length > 0 ? winningItems.map((item) => item.title).join(" + ") : "Final plan";
+  const proposedTime = session.finalPlan?.proposedTime ?? session.proposedTime ?? "TBC";
+
+  return (
+    <div className="shrink-0 px-4 pb-2">
+      <button
+        type="button"
+        onClick={onExpand}
+        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-black/6 bg-[var(--zx-ink)] px-3.5 py-2.5 text-left shadow-[0_10px_24px_rgba(15,23,42,0.14)]"
+      >
+        <span className="min-w-0">
+          <span className="block truncate text-[13px] font-extrabold text-white">{planLabel}</span>
+          <span className="block truncate text-[11px] font-semibold text-white/55">Confirmed · {proposedTime}</span>
+        </span>
+        <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[12px] font-bold text-[var(--zx-ink)]">
+          Show
+        </span>
+      </button>
+    </div>
+  );
+}
+
 function MessageComposer({
   draft,
   setDraft,
@@ -350,7 +400,10 @@ function ChatView({
   isCanceling,
   criteriaError,
   voteError,
-  cancelError
+  cancelError,
+  isPlannerMinimized,
+  onConfirmPlanner,
+  onExpandPlanner
 }: {
   thread: ThreadData;
   messages: ThreadMessage[];
@@ -377,6 +430,9 @@ function ChatView({
   criteriaError: string | null;
   voteError: string | null;
   cancelError: string | null;
+  isPlannerMinimized: boolean;
+  onConfirmPlanner: () => void;
+  onExpandPlanner: () => void;
 }) {
   const endRef = useRef<HTMLDivElement | null>(null);
   const hasDraft = draft.trim().length > 0;
@@ -419,6 +475,10 @@ function ChatView({
       </header>
 
       {isGroupChat && plannerSession ? <PlannerCelebration session={plannerSession} show={showCelebration} /> : null}
+
+      {isGroupChat && plannerSession?.status === "completed" && isPlannerMinimized ? (
+        <PlannerMinimizedBanner session={plannerSession} onExpand={onExpandPlanner} />
+      ) : null}
 
       <div className="zx-hide-scroll flex-1 overflow-y-auto px-4">
         <p className="py-4 text-center text-[13px] text-[var(--zx-muted)]">{thread.dateLabel}</p>
@@ -475,6 +535,8 @@ function ChatView({
             isCanceling={isCanceling}
             cancelError={cancelError}
             onCancel={onCancelPlanner}
+            isMinimized={isPlannerMinimized}
+            onConfirmPlan={onConfirmPlanner}
           />
         ) : null}
         <div ref={endRef} />
@@ -524,6 +586,7 @@ export function GroupChat({ chatId }: { chatId: string }) {
   const [isSubmittingVote, setIsSubmittingVote] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
   const [celebratedSessionId, setCelebratedSessionId] = useState<string | null>(null);
+  const [isPlannerMinimized, setIsPlannerMinimized] = useState(false);
 
   const refreshPlannerSession = useCallback(async () => {
     if (!thread || !isGroupChat) {
@@ -661,6 +724,24 @@ export function GroupChat({ chatId }: { chatId: string }) {
     };
   }, [plannerSession, isGroupChat]);
 
+  const activePlannerSessionId = plannerSession?.id ?? null;
+  const activePlannerStatus = plannerSession?.status ?? null;
+
+  useEffect(() => {
+    const readTimer = window.setTimeout(() => {
+      if (!isGroupChat || !activePlannerSessionId || activePlannerStatus !== "completed") {
+        setIsPlannerMinimized(false);
+        return;
+      }
+
+      setIsPlannerMinimized(window.sessionStorage.getItem(getPlannerStorageKey(activePlannerSessionId)) === "1");
+    }, 0);
+
+    return () => {
+      window.clearTimeout(readTimer);
+    };
+  }, [activePlannerSessionId, activePlannerStatus, isGroupChat]);
+
   function replacePendingMessage(messageId: string, nextMessage: ThreadMessage) {
     setMessages((previousMessages) => previousMessages.map((message) => (message.id === messageId ? nextMessage : message)));
   }
@@ -796,6 +877,24 @@ export function GroupChat({ chatId }: { chatId: string }) {
     }
   }
 
+  function confirmPlannerSession() {
+    if (!plannerSession || plannerSession.status !== "completed") {
+      return;
+    }
+
+    window.sessionStorage.setItem(getPlannerStorageKey(plannerSession.id), "1");
+    setIsPlannerMinimized(true);
+  }
+
+  function expandPlannerSession() {
+    if (!plannerSession) {
+      return;
+    }
+
+    window.sessionStorage.removeItem(getPlannerStorageKey(plannerSession.id));
+    setIsPlannerMinimized(false);
+  }
+
   const isTesterPersona = personaId === "tester";
   const isParticipant = Boolean(personaId && plannerSession?.participants.includes(personaId));
   const hasSubmittedCriteria = Boolean(personaId ? plannerSession?.criteriaByUserId?.[personaId] : false);
@@ -874,6 +973,9 @@ export function GroupChat({ chatId }: { chatId: string }) {
       criteriaError={isGroupChat && !isTesterPersona ? plannerActionError : null}
       voteError={isGroupChat && !isTesterPersona ? plannerActionError : null}
       cancelError={isGroupChat && !isTesterPersona && canCancelPlanner ? plannerActionError : null}
+      isPlannerMinimized={isPlannerMinimized}
+      onConfirmPlanner={confirmPlannerSession}
+      onExpandPlanner={expandPlannerSession}
     />
   );
 }

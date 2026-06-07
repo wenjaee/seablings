@@ -127,6 +127,8 @@ function mergeIntoBucketItem(
     estimatedCost,
     openingHours: normalizeOptionalText(enrichment.openingHours ?? place.openingHours),
     websiteUrl: normalizeOptionalText(enrichment.websiteUrl ?? place.websiteUrl),
+    photoUrl: normalizeOptionalText(enrichment.photoUrl),
+    photoSourceLinks: enrichment.photoSourceLinks && enrichment.photoSourceLinks.length > 0 ? enrichment.photoSourceLinks : undefined,
     sourceUrl: payload.sourceUrl,
     sourceType: payload.sourceType,
     tags,

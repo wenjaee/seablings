@@ -62,6 +62,7 @@ type BackendStore = {
   createBucketItem(input: ManualBucketItemInput): Promise<BucketItem>;
   saveBucketItemEmbedding(input: BucketItemEmbeddingInput): Promise<void>;
   updateBucketItemStatus(id: string, status: BucketItemStatus): Promise<BucketItem | null>;
+  updateBucketItemPhoto(id: string, input: BucketItemPhotoInput): Promise<BucketItem | null>;
   listZymixMessages(filters: ListZymixMessageFilters): Promise<ZymixMessage[]>;
   createZymixMessage(userId: ZymixMessage["userId"], input: CreateZymixMessageInput): Promise<ZymixMessage>;
   getLatestZymixMessages(threadIds: string[]): Promise<Record<string, ZymixMessage | null>>;
@@ -83,6 +84,11 @@ type BucketItemEmbeddingInput = {
   model: string;
   dimensions: number;
   contentHash: string;
+};
+
+type BucketItemPhotoInput = {
+  photoUrl?: string;
+  photoSourceLinks?: string[];
 };
 
 type BucketItemEmbeddingRecord = BucketItemEmbeddingInput & {
@@ -131,6 +137,8 @@ type BucketItemRow = {
   estimated_cost: number;
   opening_hours: string | null;
   website_url: string | null;
+  photo_url: string | null;
+  photo_source_links: string[] | null;
   source_url: string | null;
   source_type: string;
   enrichment_provider: string | null;
@@ -320,6 +328,19 @@ function createDemoStore(): BackendStore {
       item.updatedAt = nowIso();
       return { ...item };
     },
+    async updateBucketItemPhoto(id, input) {
+      const state = getDemoState();
+      const item = state.bucketItems.find((candidate) => candidate.id === id);
+
+      if (!item) {
+        return null;
+      }
+
+      item.photoUrl = normalizeOptionalText(input.photoUrl);
+      item.photoSourceLinks = normalizeStringArray(input.photoSourceLinks);
+      item.updatedAt = nowIso();
+      return { ...item };
+    },
     async listZymixMessages(filters) {
       const state = getDemoState();
 
@@ -353,7 +374,7 @@ function createDemoStore(): BackendStore {
     },
     async getLatestPlannerSession(threadId) {
       const state = getDemoState();
-      return getLatestPlannerSessionFromCollection(state.plannerSessions, threadId);
+      return hydratePlannerSessionPhotos(getLatestPlannerSessionFromCollection(state.plannerSessions, threadId), state.bucketItems);
     },
     async createOrResumePlannerSession(threadId, initiatorUserId) {
       const state = getDemoState();
@@ -551,6 +572,27 @@ function createSupabaseStore(): BackendStore {
 
       return data ? mapBucketItemRowToDomain(data as BucketItemRow) : null;
     },
+    async updateBucketItemPhoto(id, input) {
+      await ensureSupabaseSeeded(client);
+
+      const timestamp = nowIso();
+      const { data, error } = await client
+        .from("bucket_items")
+        .update({
+          photo_url: normalizeOptionalText(input.photoUrl) ?? null,
+          photo_source_links: normalizeStringArray(input.photoSourceLinks),
+          updated_at: timestamp
+        })
+        .eq("id", id)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(`Failed to update bucket item photo: ${error.message}`);
+      }
+
+      return data ? mapBucketItemRowToDomain(data as BucketItemRow) : null;
+    },
     async listZymixMessages(filters) {
       await ensureSupabaseSeeded(client);
 
@@ -632,7 +674,13 @@ function createSupabaseStore(): BackendStore {
     },
     async getLatestPlannerSession(threadId) {
       await ensureSupabaseSeeded(client);
-      return loadLatestPlannerSessionOrNull(client, threadId);
+      const session = await loadLatestPlannerSessionOrNull(client, threadId);
+      if (!session) {
+        return null;
+      }
+
+      const bucketItems = await listSavedPlannerBucketItems(client);
+      return hydratePlannerSessionPhotos(session, bucketItems);
     },
     async createOrResumePlannerSession(threadId, initiatorUserId) {
       await ensureSupabaseSeeded(client);
@@ -912,6 +960,53 @@ function createPlannerSession(threadId: string, initiatorUserId: PlannerSession[
 
 function clonePlannerSession(session: PlannerSession): PlannerSession {
   return structuredClone(session);
+}
+
+function hydratePlannerSessionPhotos(session: PlannerSession | null, bucketItems: BucketItem[]): PlannerSession | null {
+  if (!session) {
+    return null;
+  }
+
+  const photoItemsById = new Map(
+    bucketItems
+      .filter((item) => item.photoUrl || item.photoSourceLinks?.length)
+      .map((item) => [item.id, item])
+  );
+
+  if (photoItemsById.size === 0) {
+    return session;
+  }
+
+  const hydrateItem = (item: BucketItem): BucketItem => {
+    const source = photoItemsById.get(item.id);
+    if (!source) {
+      return item;
+    }
+
+    return {
+      ...item,
+      photoUrl: source.photoUrl,
+      photoSourceLinks: source.photoSourceLinks
+    };
+  };
+
+  session.recommendations = session.recommendations.map((recommendation) => ({
+    ...recommendation,
+    item: hydrateItem(recommendation.item)
+  }));
+
+  if (session.finalPlan) {
+    session.finalPlan = {
+      ...session.finalPlan,
+      recommendation: {
+        ...session.finalPlan.recommendation,
+        item: hydrateItem(session.finalPlan.recommendation.item)
+      },
+      winningItems: session.finalPlan.winningItems.map(hydrateItem)
+    };
+  }
+
+  return session;
 }
 
 function isActivePlannerSessionStatus(status: PlannerSessionStatus): boolean {
@@ -1615,67 +1710,15 @@ function finalizePlannerSessionIfReady(session: PlannerSession): void {
     recommendation: winningRecommendation,
     winningItems: winningRecommendations.map((recommendation) => recommendation.item),
     proposedTime: session.proposedTime ?? "Saturday 12:00",
-    calendarUrl: buildPlannerCalendarUrl(winningRecommendation.item, session.proposedTime ?? "Saturday 12:00"),
+    calendarUrl: buildPlannerCalendarUrl(session.threadId),
     winnerIds,
     tiedWinnerIds: winnerIds.length > 1 ? winnerIds : [],
     voteCounts
   };
 }
 
-function buildPlannerCalendarUrl(item: BucketItem, proposedTime: string): string {
-  const start = resolvePlannerCalendarStart(proposedTime);
-  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
-  const params = new URLSearchParams({
-    action: "TEMPLATE",
-    text: `SEAblings plan: ${item.title}`,
-    dates: `${formatCalendarDate(start)}/${formatCalendarDate(end)}`,
-    details: `${item.description}\n\nWhy: ${item.whyInteresting}`,
-    location: [item.address, item.postalCode].filter(Boolean).join(", ")
-  });
-
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
-}
-
-function resolvePlannerCalendarStart(proposedTime: string): Date {
-  const now = new Date();
-  const normalized = proposedTime.toLowerCase();
-
-  if (normalized.startsWith("today")) {
-    return setTimeOnDate(now, 19, 30);
-  }
-
-  if (normalized.startsWith("friday")) {
-    return nextWeekdayAt(now, 5, 19, 30);
-  }
-
-  if (normalized.startsWith("sunday")) {
-    return nextWeekdayAt(now, 0, 14, 0);
-  }
-
-  return nextWeekdayAt(now, 6, 12, 0);
-}
-
-function nextWeekdayAt(from: Date, weekday: number, hour: number, minute: number): Date {
-  const result = new Date(from);
-  const delta = (weekday - result.getDay() + 7) % 7;
-  result.setDate(result.getDate() + delta);
-  return setTimeOnDate(result, hour, minute);
-}
-
-function setTimeOnDate(date: Date, hour: number, minute: number): Date {
-  const result = new Date(date);
-  result.setHours(hour, minute, 0, 0);
-  return result;
-}
-
-function formatCalendarDate(value: Date): string {
-  const year = value.getUTCFullYear();
-  const month = `${value.getUTCMonth() + 1}`.padStart(2, "0");
-  const day = `${value.getUTCDate()}`.padStart(2, "0");
-  const hours = `${value.getUTCHours()}`.padStart(2, "0");
-  const minutes = `${value.getUTCMinutes()}`.padStart(2, "0");
-  const seconds = `${value.getUTCSeconds()}`.padStart(2, "0");
-  return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+function buildPlannerCalendarUrl(threadId: string): string {
+  return `/api/planner-session/calendar?threadId=${encodeURIComponent(threadId)}`;
 }
 
 async function listSavedPlannerBucketItems(client: SupabaseClient): Promise<BucketItem[]> {
@@ -1764,6 +1807,8 @@ function createBucketItemDomainModel(input: ManualBucketItemInput, timestamp: st
     estimatedCost: normalizeEstimatedCost(input.estimatedCost),
     openingHours: input.openingHours,
     websiteUrl: input.websiteUrl,
+    photoUrl: normalizeOptionalText(input.photoUrl),
+    photoSourceLinks: normalizeStringArray(input.photoSourceLinks),
     sourceUrl: input.sourceUrl,
     sourceType: input.sourceType ?? "manual",
     enrichmentProvider: normalizeOptionalText(input.enrichmentProvider),
@@ -1825,6 +1870,8 @@ function mapBucketItemDomainToRow(item: BucketItem): BucketItemRow {
     estimated_cost: item.estimatedCost,
     opening_hours: item.openingHours ?? null,
     website_url: item.websiteUrl ?? null,
+    photo_url: item.photoUrl ?? null,
+    photo_source_links: item.photoSourceLinks ?? [],
     source_url: item.sourceUrl ?? null,
     source_type: item.sourceType,
     enrichment_provider: item.enrichmentProvider ?? null,
@@ -1858,6 +1905,8 @@ function mapBucketItemRowToDomain(row: BucketItemRow): BucketItem {
     estimatedCost: row.estimated_cost,
     openingHours: row.opening_hours ?? undefined,
     websiteUrl: row.website_url ?? undefined,
+    photoUrl: row.photo_url ?? undefined,
+    photoSourceLinks: normalizeStringArray(row.photo_source_links),
     sourceUrl: row.source_url ?? undefined,
     sourceType: row.source_type as SourcePlatform,
     enrichmentProvider: normalizeOptionalText(row.enrichment_provider),
@@ -1913,7 +1962,7 @@ function mapPlannerSessionRowToDomain(row: PlannerSessionRow): PlannerSession {
       ? state.participants.filter((participant): participant is PlannerParticipantId => plannerParticipantSet.has(participant))
       : [...plannerParticipants];
   const recommendations = normalizePlannerRecommendations(state.recommendations);
-  const finalPlan = normalizePlannerFinalPlan(state.finalPlan, recommendations);
+  const finalPlan = normalizePlannerFinalPlan(state.finalPlan, recommendations, row.thread_id);
   const criteriaByUserId = getSubmittedPlannerCriteriaFromState(state);
   const aggregateCriteria = normalizeAggregateCriteria(state.aggregateCriteria, criteriaByUserId);
 
@@ -2051,7 +2100,8 @@ function normalizePlannerRecommendation(value: unknown): PlannerRecommendation |
 
 function normalizePlannerFinalPlan(
   raw: unknown,
-  recommendations: PlannerRecommendation[]
+  recommendations: PlannerRecommendation[],
+  threadId: string
 ): PlannerFinalPlan | undefined {
   if (!isRecord(raw)) {
     return undefined;
@@ -2094,9 +2144,7 @@ function normalizePlannerFinalPlan(
     winningItems: (winningItems.length > 0 ? winningItems : [fallbackWinningItem]).filter(Boolean) as PlannerFinalPlan["winningItems"],
     proposedTime:
       typeof raw.proposedTime === "string" && raw.proposedTime.length > 0 ? raw.proposedTime : "Saturday 12:00",
-    calendarUrl:
-      normalizePlannerOptionalText((raw as { calendarUrl?: unknown }).calendarUrl) ??
-      buildPlannerCalendarUrl(winningRecommendation.item, "Saturday 12:00"),
+    calendarUrl: buildPlannerCalendarUrl(threadId),
     winnerIds,
     tiedWinnerIds: winnerWithTieIds.length > 0 ? winnerWithTieIds : tiedWinnerIds,
     voteCounts: normalizePlannerVoteCounts(parsedVoteCounts)

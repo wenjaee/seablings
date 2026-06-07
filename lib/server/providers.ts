@@ -105,6 +105,8 @@ export type ProviderPlaceEnrichment = {
   estimatedCost?: number;
   openingHours?: string;
   websiteUrl?: string;
+  photoUrl?: string;
+  photoSourceLinks?: string[];
   sourceLinks: string[];
   confidenceNote?: string;
   dateHints?: string[];
@@ -190,6 +192,8 @@ type SanitizedPerplexityAttempt = {
   estimatedCost?: number;
   openingHours?: string;
   websiteUrl?: string;
+  photoUrl?: string;
+  photoSourceLinks?: string[];
   sourceLinks: string[];
   confidenceNote?: string;
   dateHints?: string[];
@@ -222,6 +226,19 @@ type TikTokResponse = {
 
 type InstagramGraphQLResponse = {
   data?: unknown;
+};
+
+type PerplexityImage = {
+  image_url?: unknown;
+  origin_url?: unknown;
+  title?: unknown;
+  width?: unknown;
+  height?: unknown;
+};
+
+type PerplexityImageResult = {
+  photoUrl?: string;
+  photoSourceLinks?: string[];
 };
 
 const ENSEMBLE_BASE_URL = "https://ensembledata.com/apis";
@@ -334,6 +351,22 @@ export async function enrichPlaceWithPerplexity(
     return finalizePerplexityEnrichment(finalAttempt, place);
   } catch {
     return buildFallbackEnrichment(place, payload, "Perplexity request failed. Preserved extraction-only fields.");
+  }
+}
+
+export async function enrichPlacePhotoWithPerplexity(
+  place: Pick<ProviderPlaceExtraction, "title" | "locationName" | "neighborhood" | "address" | "websiteUrl">
+): Promise<PerplexityImageResult | null> {
+  const apiKey = process.env.PERPLEXITY_API_KEY?.trim();
+  if (!apiKey) {
+    return null;
+  }
+
+  try {
+    const response = await requestPerplexityImages(apiKey, buildPerplexityPhotoPrompt(place));
+    return extractPerplexityImageResult(response);
+  } catch {
+    return null;
   }
 }
 
@@ -1209,6 +1242,8 @@ async function requestPerplexityEnrichment(
       model: PERPLEXITY_MODEL,
       temperature: 0.1,
       search_mode: "web",
+      return_images: true,
+      image_format_filter: ["jpg", "jpeg", "png", "webp"],
       max_tokens: 700,
       response_format: {
         type: "json_schema",
@@ -1237,12 +1272,13 @@ async function requestPerplexityEnrichment(
     return null;
   }
 
-  return sanitizePerplexityAttempt(parsed, extractPerplexityCitations(response));
+  return sanitizePerplexityAttempt(parsed, extractPerplexityCitations(response), extractPerplexityImageResult(response));
 }
 
 function sanitizePerplexityAttempt(
   parsed: PerplexityEnrichmentResponse,
-  citations: string[]
+  citations: string[],
+  imageResult?: PerplexityImageResult | null
 ): SanitizedPerplexityAttempt {
   const estimatedCost = normalizeEstimatedCost(parsed.estimatedCost);
   const priceEstimate = normalizePriceTier(parsed.priceEstimate, estimatedCost);
@@ -1265,6 +1301,8 @@ function sanitizePerplexityAttempt(
     estimatedCost,
     openingHours: optionalTrimmedString(parsed.openingHours),
     websiteUrl: optionalTrimmedString(parsed.websiteUrl),
+    photoUrl: imageResult?.photoUrl,
+    photoSourceLinks: imageResult?.photoSourceLinks,
     sourceLinks: normalizeSourceLinks(parsed.sourceLinks, citations),
     confidenceNote: optionalTrimmedString(parsed.confidenceNote),
     dateHints: normalizeDateHints(parsed.dateHints),
@@ -1306,6 +1344,8 @@ function mergePerplexityAttempts(
     estimatedCost: retry.estimatedCost ?? base.estimatedCost,
     openingHours: retry.openingHours ?? base.openingHours,
     websiteUrl: retry.websiteUrl ?? base.websiteUrl,
+    photoUrl: retry.photoUrl ?? base.photoUrl,
+    photoSourceLinks: normalizeSourceLinks([...(base.photoSourceLinks ?? []), ...(retry.photoSourceLinks ?? [])]),
     sourceLinks: normalizeSourceLinks([...base.sourceLinks, ...retry.sourceLinks]),
     confidenceNote: retry.confidenceNote ?? base.confidenceNote,
     dateHints: normalizeDateHints([...(base.dateHints ?? []), ...(retry.dateHints ?? [])]),
@@ -1340,6 +1380,8 @@ function finalizePerplexityEnrichment(
     estimatedCost: attempt.estimatedCost,
     openingHours: attempt.openingHours,
     websiteUrl: attempt.websiteUrl,
+    photoUrl: attempt.photoUrl,
+    photoSourceLinks: attempt.photoSourceLinks,
     sourceLinks: attempt.sourceLinks,
     confidenceNote,
     dateHints: attempt.dateHints,
@@ -1449,6 +1491,100 @@ function normalizeSourceLinks(value: unknown, fallback: string[] = []): string[]
   }
 
   return deduped.slice(0, 6);
+}
+
+async function requestPerplexityImages(apiKey: string, prompt: string): Promise<unknown> {
+  return fetchJson("https://api.perplexity.ai/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: PERPLEXITY_MODEL,
+      temperature: 0.1,
+      search_mode: "web",
+      return_images: true,
+      image_format_filter: ["jpg", "jpeg", "png", "webp"],
+      max_tokens: 180,
+      messages: [
+        {
+          role: "system",
+          content: "Find a representative public image for the exact place. Return a concise answer; image metadata is read from the API response."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ]
+    })
+  });
+}
+
+function buildPerplexityPhotoPrompt(
+  place: Pick<ProviderPlaceExtraction, "title" | "locationName" | "neighborhood" | "address" | "websiteUrl">
+): string {
+  return [
+    "Find one representative public photo for this exact place.",
+    "Prefer official venue, publisher, or map/listing images over generic stock photos.",
+    "Do not broaden to unrelated locations with similar names.",
+    "",
+    `Title: ${place.title}`,
+    `Location name: ${place.locationName}`,
+    `Neighborhood: ${place.neighborhood}`,
+    place.address ? `Address: ${place.address}` : null,
+    place.websiteUrl ? `Website: ${place.websiteUrl}` : null
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function extractPerplexityImageResult(response: unknown): PerplexityImageResult | null {
+  try {
+    if (!isRecord(response) || !Array.isArray(response.images)) {
+      return null;
+    }
+
+    const sources: string[] = [];
+    for (const image of response.images as PerplexityImage[]) {
+      if (!isRecord(image)) {
+        continue;
+      }
+
+      const imageUrl = normalizeDirectImageUrl(image.image_url);
+      if (!imageUrl) {
+        continue;
+      }
+
+      sources.push(...normalizeSourceLinks([image.origin_url, imageUrl]));
+      return {
+        photoUrl: imageUrl,
+        photoSourceLinks: normalizeSourceLinks(sources)
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function normalizeDirectImageUrl(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const url = safeUrl(value.trim());
+  if (!url || !isHttpUrl(url)) {
+    return undefined;
+  }
+
+  const pathname = url.pathname.toLowerCase();
+  if (!/\.(?:jpe?g|png|webp|gif)(?:$|\?)/.test(pathname) && !pathname.includes("/image")) {
+    return undefined;
+  }
+
+  return url.toString();
 }
 
 function normalizeDateHints(value: unknown): string[] | undefined {
@@ -1673,10 +1809,15 @@ function safeUrl(value: string | undefined): URL | null {
   }
 
   try {
-    return new URL(value);
+    const url = new URL(value);
+    return isHttpUrl(url) ? url : null;
   } catch {
     return null;
   }
+}
+
+function isHttpUrl(url: URL): boolean {
+  return url.protocol === "http:" || url.protocol === "https:";
 }
 
 function normalizeStringArray(value: unknown): string[] {

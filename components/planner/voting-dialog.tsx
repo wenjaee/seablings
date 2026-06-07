@@ -286,6 +286,8 @@ function DeckCard({
   const skipOpacity = Math.min(Math.max(-dragX, 0) / SWIPE_THRESHOLD, 1);
   const mapsUrl = getMapsUrl(recommendation);
   const distanceLabel = getDistanceLabel(recommendation);
+  const [imageFailed, setImageFailed] = useState(false);
+  const showPhoto = Boolean(recommendation.photoUrl && !imageFailed);
 
   return (
     <div
@@ -305,7 +307,17 @@ function DeckCard({
         className="relative grid h-[170px] place-items-center text-[64px]"
         style={{ background: CARD_TINTS[index % CARD_TINTS.length] }}
       >
-        {recommendation.emoji ?? "📍"}
+        <span>{recommendation.emoji ?? "📍"}</span>
+        {showPhoto ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={recommendation.photoUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            draggable={false}
+            onError={() => setImageFailed(true)}
+          />
+        ) : null}
         {pos === 0 ? (
           <>
             <span
