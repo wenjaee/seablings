@@ -220,7 +220,7 @@ function ItemSheet({
       <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} aria-hidden />
 
       {/* Sheet panel */}
-      <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[430px] rounded-t-3xl bg-white px-5 pb-10 pt-4 shadow-2xl">
+      <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[430px] rounded-t-3xl bg-white px-5 pb-10 pt-7 shadow-2xl">
         {/* Drag handle */}
         <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-[var(--zx-line)]" />
 
