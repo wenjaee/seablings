@@ -71,6 +71,7 @@ type BackendStore = {
   getLatestPlannerSession(threadId: PlannerSessionFilters["threadId"]): Promise<PlannerSession | null>;
   createOrResumePlannerSession(threadId: string, initiatorUserId: PlannerSession["initiatorUserId"]): Promise<PlannerSession>;
   cancelPlannerSession(threadId: string, userId: PlannerParticipantId): Promise<PlannerSession>;
+  deleteLatestPlannerSession(threadId: string, userId: PlannerParticipantId): Promise<void>;
   submitPlannerCriteria(
     threadId: string,
     userId: PlannerParticipantId,
@@ -406,6 +407,12 @@ function createDemoStore(): BackendStore {
 
       markPlannerSessionCanceled(session, userId);
       return clonePlannerSession(session);
+    },
+    async deleteLatestPlannerSession(threadId, userId) {
+      const state = getDemoState();
+      assertPlannerParticipant(userId);
+      const session = findLatestMutablePlannerSession(state.plannerSessions, threadId);
+      state.plannerSessions = state.plannerSessions.filter((candidate) => candidate.id !== session.id);
     },
     async submitPlannerCriteria(threadId, userId, input) {
       const state = getDemoState();
@@ -747,6 +754,24 @@ function createSupabaseStore(): BackendStore {
         }
 
         throw error;
+      }
+    },
+    async deleteLatestPlannerSession(threadId, userId) {
+      await ensureSupabaseSeeded(client);
+      assertPlannerParticipant(userId);
+
+      const session = await loadLatestPlannerSessionOrNull(client, threadId);
+      if (!session) {
+        throw new NotFoundError("No planner session found for this thread.");
+      }
+
+      const { error } = await client.from("planner_sessions").delete().eq("id", session.id);
+      if (error) {
+        if (isMissingSupabaseTableError(error, "planner_sessions")) {
+          return createDemoStore().deleteLatestPlannerSession(threadId, userId);
+        }
+
+        throw new Error(`Failed to delete planner session: ${error.message}`);
       }
     },
     async submitPlannerCriteria(threadId, userId, input) {

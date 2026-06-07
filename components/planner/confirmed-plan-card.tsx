@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar } from "lucide-react";
+import { Calendar, X } from "lucide-react";
 
 import type { PlannerRecommendationCard, PlannerWinner } from "@/lib/planner/types";
 
@@ -32,12 +32,16 @@ export function PlannerConfirmedPlanCard({
   winner,
   proposedTime,
   calendarUrl,
-  onConfirm
+  onConfirm,
+  onRemove,
+  isRemoving = false
 }: {
   winner: ConfirmedPlanCardInput;
   proposedTime?: string;
   calendarUrl?: string;
   onConfirm?: () => void;
+  onRemove?: () => Promise<void> | void;
+  isRemoving?: boolean;
 }) {
   const label = getRecommendationLabel(winner);
   const area = getRecommendationArea(winner);
@@ -65,41 +69,52 @@ export function PlannerConfirmedPlanCard({
 
       <div className="px-4 py-3.5">
         <div className="mb-2.5 flex items-center gap-2">
-        <span
-          className="rounded-md px-2 py-0.5 text-[10px] font-extrabold"
-          style={{ background: "var(--zx-brand)", color: "#ffffff" }}
+          <span
+            className="rounded-md px-2 py-0.5 text-[10px] font-extrabold"
+            style={{ background: "var(--zx-brand)", color: "#ffffff" }}
+          >
+            planner
+          </span>
+          <span className="text-[11px] text-white/55">Confirmed plan</span>
+          {onRemove ? (
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={isRemoving}
+              className="ml-auto inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              <X size={12} aria-hidden />
+              {isRemoving ? "Removing" : "Remove"}
+            </button>
+          ) : null}
+        </div>
+
+        <p className="mb-2.5 break-words text-[16px] font-extrabold text-white">{label}</p>
+
+        <PlanRow label="When" value={proposedTime ?? "TBC"} />
+        <PlanRow label="Where" value={area} />
+        <PlanRow label="Budget" value={budgetLabel} />
+
+        <a
+          href={calendarUrl ?? "#"}
+          target="_blank"
+          rel="noreferrer"
+          aria-disabled={!calendarUrl}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-[14px] font-bold text-[var(--zx-ink)] aria-disabled:pointer-events-none aria-disabled:opacity-50"
         >
-          planner
-        </span>
-        <span className="text-[11px] text-white/55">Confirmed plan</span>
-      </div>
+          <Calendar size={16} />
+          Add to Phone Calendar
+        </a>
 
-      <p className="mb-2.5 break-words text-[16px] font-extrabold text-white">{label}</p>
-
-      <PlanRow label="When" value={proposedTime ?? "TBC"} />
-      <PlanRow label="Where" value={area} />
-      <PlanRow label="Budget" value={budgetLabel} />
-
-      <a
-        href={calendarUrl ?? "#"}
-        target="_blank"
-        rel="noreferrer"
-        aria-disabled={!calendarUrl}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-[14px] font-bold text-[var(--zx-ink)] aria-disabled:pointer-events-none aria-disabled:opacity-50"
-      >
-        <Calendar size={16} />
-        Add to Phone Calendar
-      </a>
-
-      {onConfirm ? (
-        <button
-          type="button"
-          onClick={onConfirm}
-          className="mt-2.5 flex w-full items-center justify-center rounded-xl bg-[var(--zx-brand)] py-2.5 text-[14px] font-extrabold text-white"
-        >
-          Confirm
-        </button>
-      ) : null}
+        {onConfirm ? (
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="mt-2.5 flex w-full items-center justify-center rounded-xl bg-[var(--zx-brand)] py-2.5 text-[14px] font-extrabold text-white"
+          >
+            Confirm
+          </button>
+        ) : null}
       </div>
     </div>
   );

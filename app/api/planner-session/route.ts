@@ -38,6 +38,33 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  const persona = await getCurrentPersona(request.cookies);
+  if (!persona) {
+    return jsonError("Unauthorized.", 401);
+  }
+
+  if (!isPlannerParticipantId(persona.id)) {
+    return jsonError("Only Jeff, Praya, and Tana can remove planner sessions.", 403);
+  }
+
+  try {
+    const filters = parsePlannerSessionFilters(request.nextUrl.searchParams);
+    const store = getBackendStore();
+    await store.deleteLatestPlannerSession(filters.threadId, persona.id);
+
+    return NextResponse.json({
+      session: null,
+      mode: store.mode
+    });
+  } catch (error) {
+    return jsonError(
+      error instanceof Error ? error.message : "Failed to remove planner session.",
+      statusForPlannerError(error)
+    );
+  }
+}
+
 function statusForPlannerError(error: unknown): number {
   if (error instanceof AuthorizationError) {
     return 403;

@@ -1023,7 +1023,9 @@ export function PlannerThread({
   cancelError,
   isMinimized = false,
   onCancel,
-  onConfirmPlan
+  onConfirmPlan,
+  onRemovePlan,
+  isRemovingPlan = false
 }: {
   session: PlannerSession;
   currentPersonaId: ZymixPersonaId;
@@ -1033,6 +1035,8 @@ export function PlannerThread({
   isMinimized?: boolean;
   onCancel?: () => Promise<void> | void;
   onConfirmPlan?: () => void;
+  onRemovePlan?: () => Promise<void> | void;
+  isRemovingPlan?: boolean;
 }) {
   const isCollecting = session.status === "collecting";
   const isVoting = session.status === "voting";
@@ -1077,7 +1081,12 @@ export function PlannerThread({
       {isCompleted && !isMinimized ? (
         <div className="space-y-2">
           <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--zx-faint)]">Confirmed plan</p>
-          <PlannerConfirmationCompact session={session} onConfirmPlan={onConfirmPlan} />
+          <PlannerConfirmationCompact
+            session={session}
+            onConfirmPlan={onConfirmPlan}
+            onRemovePlan={onRemovePlan}
+            isRemovingPlan={isRemovingPlan}
+          />
         </div>
       ) : null}
     </section>
@@ -1086,10 +1095,14 @@ export function PlannerThread({
 
 function PlannerConfirmationCompact({
   session,
-  onConfirmPlan
+  onConfirmPlan,
+  onRemovePlan,
+  isRemovingPlan = false
 }: {
   session: PlannerSession;
   onConfirmPlan?: () => void;
+  onRemovePlan?: () => Promise<void> | void;
+  isRemovingPlan?: boolean;
 }) {
   const winningItems = getWinningItems(session);
   const voteEntries = getVoteCountEntries(session);
@@ -1116,6 +1129,8 @@ function PlannerConfirmationCompact({
           proposedTime={session.finalPlan?.proposedTime ?? session.proposedTime ?? undefined}
           calendarUrl={calendarUrl}
           onConfirm={onConfirmPlan}
+          onRemove={onRemovePlan}
+          isRemoving={isRemovingPlan}
         />
       ) : null}
 

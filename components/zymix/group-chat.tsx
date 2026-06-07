@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, Camera, Mic, MoreHorizontal, Plus, RefreshCcw, Send, Sticker } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Camera, Mic, MoreHorizontal, Plus, RefreshCcw, Send, Sticker, X } from "lucide-react";
 import { type RealtimeChannel } from "@supabase/supabase-js";
 
 import { Avatar } from "@/components/zymix/avatar";
@@ -215,6 +215,18 @@ async function postPlannerCancel(threadId: string) {
   return isRecord(responsePayload) ? responsePayload.session ?? null : null;
 }
 
+async function deletePlannerSession(threadId: string) {
+  const response = await fetch(`/api/planner-session?threadId=${encodeURIComponent(threadId)}`, {
+    method: "DELETE",
+    credentials: "include"
+  });
+
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => null);
+    throw new Error(readErrorMessage(errorPayload, "Failed to remove planner."));
+  }
+}
+
 function subscribeToThread(threadId: string, onRefresh: () => void) {
   const client = getBrowserSupabaseClient();
   if (!client) {
@@ -270,10 +282,14 @@ function getPlannerWinningItems(session: PlannerSession) {
 
 function PlannerMinimizedBanner({
   session,
-  onExpand
+  onExpand,
+  onRemove,
+  isRemoving = false
 }: {
   session: PlannerSession;
   onExpand: () => void;
+  onRemove?: () => Promise<void> | void;
+  isRemoving?: boolean;
 }) {
   const winningItems = getPlannerWinningItems(session);
   const planLabel = winningItems.length > 0 ? winningItems.map((item) => item.title).join(" + ") : "Final plan";
@@ -281,19 +297,32 @@ function PlannerMinimizedBanner({
 
   return (
     <div className="shrink-0 px-4 pb-2">
-      <button
-        type="button"
-        onClick={onExpand}
-        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-black/6 bg-[var(--zx-ink)] px-3.5 py-2.5 text-left shadow-[0_10px_24px_rgba(15,23,42,0.14)]"
-      >
+      <div className="flex w-full items-center justify-between gap-3 rounded-2xl border border-black/6 bg-[var(--zx-ink)] px-3.5 py-2.5 text-left shadow-[0_10px_24px_rgba(15,23,42,0.14)]">
         <span className="min-w-0">
           <span className="block truncate text-[13px] font-extrabold text-white">{planLabel}</span>
           <span className="block truncate text-[11px] font-semibold text-white/55">Confirmed · {proposedTime}</span>
         </span>
-        <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[12px] font-bold text-[var(--zx-ink)]">
-          Show
+        <span className="flex shrink-0 items-center gap-2">
+          {onRemove ? (
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={isRemoving}
+              aria-label="Remove confirmed plan"
+              className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              <X size={15} aria-hidden />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onExpand}
+            className="rounded-full bg-white px-3 py-1 text-[12px] font-bold text-[var(--zx-ink)]"
+          >
+            Show
+          </button>
         </span>
-      </button>
+      </div>
     </div>
   );
 }
@@ -403,7 +432,9 @@ function ChatView({
   cancelError,
   isPlannerMinimized,
   onConfirmPlanner,
-  onExpandPlanner
+  onExpandPlanner,
+  onRemovePlanner,
+  isRemovingPlanner
 }: {
   thread: ThreadData;
   messages: ThreadMessage[];
@@ -433,6 +464,8 @@ function ChatView({
   isPlannerMinimized: boolean;
   onConfirmPlanner: () => void;
   onExpandPlanner: () => void;
+  onRemovePlanner?: () => Promise<void> | void;
+  isRemovingPlanner: boolean;
 }) {
   const endRef = useRef<HTMLDivElement | null>(null);
   const hasDraft = draft.trim().length > 0;
@@ -477,7 +510,12 @@ function ChatView({
       {isGroupChat && plannerSession ? <PlannerCelebration session={plannerSession} show={showCelebration} /> : null}
 
       {isGroupChat && plannerSession?.status === "completed" && isPlannerMinimized ? (
-        <PlannerMinimizedBanner session={plannerSession} onExpand={onExpandPlanner} />
+        <PlannerMinimizedBanner
+          session={plannerSession}
+          onExpand={onExpandPlanner}
+          onRemove={onRemovePlanner}
+          isRemoving={isRemovingPlanner}
+        />
       ) : null}
 
       <div className="zx-hide-scroll flex-1 overflow-y-auto px-4">
@@ -543,6 +581,8 @@ function ChatView({
             onCancel={onCancelPlanner}
             isMinimized={isPlannerMinimized}
             onConfirmPlan={onConfirmPlanner}
+            onRemovePlan={onRemovePlanner}
+            isRemovingPlan={isRemovingPlanner}
           />
         ) : null}
         <div ref={endRef} />
@@ -591,6 +631,7 @@ export function GroupChat({ chatId }: { chatId: string }) {
   const [isSubmittingCriteria, setIsSubmittingCriteria] = useState(false);
   const [isSubmittingVote, setIsSubmittingVote] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isRemovingPlanner, setIsRemovingPlanner] = useState(false);
   const [celebratedSessionId, setCelebratedSessionId] = useState<string | null>(null);
   const [isPlannerMinimized, setIsPlannerMinimized] = useState(false);
 
@@ -883,6 +924,32 @@ export function GroupChat({ chatId }: { chatId: string }) {
     }
   }
 
+  async function removePlannerSession() {
+    if (!thread || !persona || !plannerSession || isRemovingPlanner) {
+      return;
+    }
+
+    const removedSessionId = plannerSession.id;
+    setIsRemovingPlanner(true);
+    setPlannerActionError(null);
+
+    try {
+      await deletePlannerSession(thread.threadId);
+      window.sessionStorage.removeItem(getPlannerStorageKey(removedSessionId));
+      window.sessionStorage.removeItem(`zymix-planner-celebrated:${removedSessionId}`);
+      setPlannerSession(null);
+      setCelebratedSessionId(null);
+      setIsPlannerMinimized(false);
+      setPlannerError(null);
+    } catch (plannerRemoveError) {
+      const message = plannerRemoveError instanceof Error ? plannerRemoveError.message : "Failed to remove planner.";
+      setPlannerActionError(message);
+      setPlannerError(message);
+    } finally {
+      setIsRemovingPlanner(false);
+    }
+  }
+
   function confirmPlannerSession() {
     if (!plannerSession || plannerSession.status !== "completed") {
       return;
@@ -905,6 +972,7 @@ export function GroupChat({ chatId }: { chatId: string }) {
   const isParticipant = Boolean(personaId && plannerSession?.participants.includes(personaId));
   const hasSubmittedCriteria = Boolean(personaId ? plannerSession?.criteriaByUserId?.[personaId] : false);
   const hasSubmittedVotes = Boolean(personaId ? plannerSession?.votesByUserId?.[personaId] : false);
+  const canRemovePlanner = Boolean(isGroupChat && isParticipant && !isTesterPersona && plannerSession?.status === "completed");
   const canCancelPlanner = Boolean(
     isGroupChat &&
       isParticipant &&
@@ -982,6 +1050,8 @@ export function GroupChat({ chatId }: { chatId: string }) {
       isPlannerMinimized={isPlannerMinimized}
       onConfirmPlanner={confirmPlannerSession}
       onExpandPlanner={expandPlannerSession}
+      onRemovePlanner={canRemovePlanner ? removePlannerSession : undefined}
+      isRemovingPlanner={isRemovingPlanner}
     />
   );
 }
