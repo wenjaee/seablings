@@ -100,7 +100,6 @@ function StickerCard({
     <Link
       href={`/me/bucket-list/${cat}`}
       className="flex flex-col items-center gap-2 transition-transform active:scale-95"
-      style={{ rotate: `${meta.rotation}deg` }}
     >
       {meta.sticker ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -108,16 +107,17 @@ function StickerCard({
           src={`/stickers/${meta.sticker}.png`}
           alt={meta.name}
           className="h-[150px] w-[150px] object-contain"
+          style={{ rotate: `${meta.rotation}deg` }}
         />
       ) : (
-        <span className="flex h-[150px] w-[150px] items-center justify-center text-[72px]">
+        <span
+          className="flex h-[150px] w-[150px] items-center justify-center text-[72px]"
+          style={{ rotate: `${meta.rotation}deg` }}
+        >
           {meta.emoji}
         </span>
       )}
-      <p className="text-[12px] font-bold text-[var(--zx-ink)]">{meta.name}</p>
-      <p className="text-[11px] text-[var(--zx-muted)]">
-        {count} {count === 1 ? "place" : "places"}
-      </p>
+      <p className="text-[12px] font-bold text-[var(--zx-ink)]">{meta.plural}</p>
     </Link>
   );
 }
