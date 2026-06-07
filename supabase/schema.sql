@@ -35,7 +35,7 @@ create table if not exists bucket_items (
   status text not null check (status in ('candidate', 'saved', 'completed', 'rejected', 'archived')),
   date_type text not null check (date_type in ('anytime', 'one_off', 'limited_run', 'scheduled')),
   title text not null,
-  category text not null check (category in ('bakery', 'cafe', 'restaurant', 'bar', 'nightlife', 'activity', 'culture', 'shopping', 'other')),
+  category text not null check (category in ('cafe', 'restaurant', 'nightlife', 'activity', 'culture', 'shopping')),
   description text not null,
   why_interesting text not null,
   location_name text not null,

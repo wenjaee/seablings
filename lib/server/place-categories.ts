@@ -7,11 +7,11 @@ export type PlaceCategory = BucketCategory;
 const PLACE_CATEGORY_SET = new Set<PlaceCategory>(PLACE_CATEGORIES);
 
 const CATEGORY_ALIASES: Record<string, PlaceCategory> = {
-  bakery: "bakery",
-  bakehouse: "bakery",
-  pastry: "bakery",
-  pastries: "bakery",
-  patisserie: "bakery",
+  bakery: "cafe",
+  bakehouse: "cafe",
+  pastry: "cafe",
+  pastries: "cafe",
+  patisserie: "cafe",
   cafe: "cafe",
   coffee: "cafe",
   coffeeshop: "cafe",
@@ -23,11 +23,11 @@ const CATEGORY_ALIASES: Record<string, PlaceCategory> = {
   dining: "restaurant",
   food: "restaurant",
   eats: "restaurant",
-  bar: "bar",
-  pub: "bar",
-  drinks: "bar",
-  cocktail: "bar",
-  cocktails: "bar",
+  bar: "nightlife",
+  pub: "nightlife",
+  drinks: "nightlife",
+  cocktail: "nightlife",
+  cocktails: "nightlife",
   nightlife: "nightlife",
   club: "nightlife",
   late_night: "nightlife",
@@ -46,22 +46,24 @@ const CATEGORY_ALIASES: Record<string, PlaceCategory> = {
   retail: "shopping",
   store: "shopping",
   shop: "shopping",
-  hidden_gem: "other",
-  "hidden-gem": "other",
-  other: "other"
+  hidden_gem: "activity",
+  "hidden-gem": "activity",
+  other: "activity"
 };
 
 const CATEGORY_KEYWORDS: Array<{ category: PlaceCategory; patterns: RegExp[] }> = [
-  { category: "bakery", patterns: [/\bbakery\b/i, /\bpastr(y|ies)\b/i, /\bbread\b/i, /\bpatisserie\b/i] },
   {
     category: "cafe",
-    patterns: [/\bcafe\b/i, /\bcoffee\b/i, /\bespresso\b/i, /\bbrunch\b/i, /\bmatcha\b/i, /\blatte\b/i]
+    patterns: [/\bbakery\b/i, /\bpastr(y|ies)\b/i, /\bbread\b/i, /\bpatisserie\b/i, /\bcafe\b/i, /\bcoffee\b/i, /\bespresso\b/i, /\bbrunch\b/i, /\bmatcha\b/i, /\blatte\b/i]
   },
   {
     category: "restaurant",
     patterns: [/\brestaurant\b/i, /\bdinner\b/i, /\blunch\b/i, /\bmeal\b/i, /\bfood\b/i, /\beatery\b/i]
   },
-  { category: "bar", patterns: [/\bbar\b/i, /\bpub\b/i, /\bcocktail\b/i, /\bwine\b/i, /\bbeer\b/i] },
+  {
+    category: "nightlife",
+    patterns: [/\bbar\b/i, /\bpub\b/i, /\bcocktail\b/i, /\bwine\b/i, /\bbeer\b/i, /\bnightlife\b/i]
+  },
   { category: "nightlife", patterns: [/\bclub\b/i, /\bdj\b/i, /\blate[- ]night\b/i, /\bparty\b/i, /\blive music\b/i] },
   {
     category: "activity",
@@ -77,7 +79,9 @@ const CATEGORY_KEYWORDS: Array<{ category: PlaceCategory; patterns: RegExp[] }> 
   }
 ];
 
-export function normalizePlaceCategory(value: unknown, fallback: PlaceCategory = "other"): PlaceCategory {
+const DEFAULT_UNKNOWN_CATEGORY: PlaceCategory = "activity";
+
+export function normalizePlaceCategory(value: unknown, fallback: PlaceCategory = DEFAULT_UNKNOWN_CATEGORY): PlaceCategory {
   if (typeof value !== "string") {
     return fallback;
   }
@@ -90,7 +94,7 @@ export function normalizePlaceCategory(value: unknown, fallback: PlaceCategory =
   return CATEGORY_ALIASES[normalized] ?? fallback;
 }
 
-export function inferPlaceCategory(text: string, fallback: PlaceCategory = "other"): PlaceCategory {
+export function inferPlaceCategory(text: string, fallback: PlaceCategory = DEFAULT_UNKNOWN_CATEGORY): PlaceCategory {
   for (const candidate of CATEGORY_KEYWORDS) {
     if (candidate.patterns.some((pattern) => pattern.test(text))) {
       return candidate.category;
