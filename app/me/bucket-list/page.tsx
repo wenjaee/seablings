@@ -31,13 +31,12 @@ export default async function BucketListLandingPage() {
     (cat) => (counts.get(cat) ?? 0) > 0,
   );
 
-  const left  = populated.filter((_, i) => i % 2 === 0);
-  const right = populated.filter((_, i) => i % 2 === 1);
+  const rowCount = Math.max(1, Math.ceil(populated.length / 2));
 
   return (
     <PhoneShell>
-      <main className="zx-hide-scroll flex flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 pt-1">
-        <div className="relative flex items-center py-3">
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-1">
+        <div className="relative flex h-8 shrink-0 items-center">
           <Link
             href="/me"
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--zx-surface)]"
@@ -46,9 +45,9 @@ export default async function BucketListLandingPage() {
           </Link>
         </div>
 
-        <div className="pb-6 text-center">
-          <p className="text-[14px] text-[var(--zx-muted)]">{persona.name}&apos;s</p>
-          <h1 className="text-[32px] font-extrabold tracking-tight text-[var(--zx-ink)]">
+        <div className="shrink-0 pb-3 text-center">
+          <p className="text-[13px] leading-tight text-[var(--zx-muted)]">{persona.name}&apos;s</p>
+          <h1 className="text-[30px] font-extrabold leading-tight tracking-tight text-[var(--zx-ink)]">
             Bucket List
           </h1>
         </div>
@@ -56,28 +55,19 @@ export default async function BucketListLandingPage() {
         {populated.length === 0 ? (
           <div className="zx-dot-paper flex-1 rounded-3xl"><EmptyState /></div>
         ) : (
-          <div className="zx-dot-paper flex-1 rounded-3xl px-4 pb-8 pt-6">
-            <div className="flex gap-3">
-              <div className="flex flex-1 flex-col gap-2">
-                {left.map((cat) => (
-                  <StickerCard
-                    key={cat}
-                    cat={cat}
-                    meta={CATEGORY_META[cat]}
-                    count={counts.get(cat) ?? 0}
-                  />
-                ))}
-              </div>
-              <div className="mt-16 flex flex-1 flex-col gap-2">
-                {right.map((cat) => (
-                  <StickerCard
-                    key={cat}
-                    cat={cat}
-                    meta={CATEGORY_META[cat]}
-                    count={counts.get(cat) ?? 0}
-                  />
-                ))}
-              </div>
+          <div className="zx-dot-paper min-h-0 flex-1 rounded-[28px] px-3 py-3">
+            <div
+              className="grid h-full min-h-0 grid-cols-2 gap-x-3 gap-y-1"
+              style={{ gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))` }}
+            >
+              {populated.map((cat) => (
+                <StickerCard
+                  key={cat}
+                  cat={cat}
+                  meta={CATEGORY_META[cat]}
+                  count={counts.get(cat) ?? 0}
+                />
+              ))}
             </div>
           </div>
         )}
@@ -99,32 +89,34 @@ function StickerCard({
   return (
     <Link
       href={`/me/bucket-list/${cat}`}
-      className="flex w-full min-w-0 flex-col items-center gap-2 transition-transform active:scale-95"
+      className="flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-center gap-1 transition-transform active:scale-95"
     >
       {meta.sticker ? (
         <span
-          className="grid aspect-square w-full max-w-[170px] place-items-center"
-          style={{ rotate: `${meta.rotation}deg` }}
+          className="grid min-h-0 w-full max-w-[132px] flex-1 place-items-center overflow-visible"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={`/stickers/${meta.sticker}.png`}
             alt={meta.name}
-            className="max-h-full max-w-full object-contain"
+            className="max-h-[86%] max-w-[86%] object-contain"
+            style={{ rotate: `${meta.rotation}deg` }}
           />
         </span>
       ) : (
         <span
-          className="flex aspect-square w-full max-w-[170px] items-center justify-center text-[64px]"
+          className="flex min-h-0 w-full max-w-[132px] flex-1 items-center justify-center text-[54px]"
           style={{ rotate: `${meta.rotation}deg` }}
         >
           {meta.emoji}
         </span>
       )}
-      <p className="text-[12px] font-bold text-[var(--zx-ink)]">{meta.plural}</p>
-      <p className="text-[11px] text-[var(--zx-muted)]">
-        {count} {count === 1 ? "place" : "places"}
-      </p>
+      <span className="relative z-10 max-w-full shrink-0 rounded-full bg-[#f5efe6]/85 px-2 py-0.5 text-center">
+        <p className="truncate text-[12px] font-bold leading-tight text-[var(--zx-ink)]">{meta.plural}</p>
+        <p className="text-[10px] leading-tight text-[var(--zx-muted)]">
+          {count} {count === 1 ? "place" : "places"}
+        </p>
+      </span>
     </Link>
   );
 }
