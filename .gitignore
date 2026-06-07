@@ -15,9 +15,11 @@ graphify-out/
 gitnexus-out/
 .gitnexus/
 .gstack/
+.worktrees/
 
 # supabase
 supabase/.temp/
 
 # worktrees
 .worktrees/
+.vercel

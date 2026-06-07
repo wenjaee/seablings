@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentPersona } from "@/lib/server/auth";
 import { jsonError, readJsonBody, statusForError } from "@/lib/server/http";
 import { getBackendStore } from "@/lib/server/store";
-import { parseCreateZymixMessageInput, parseZymixMessageFilters } from "@/lib/server/validation";
+import { isPlannerParticipantId, parseCreateZymixMessageInput, parseZymixMessageFilters } from "@/lib/server/validation";
 
 export async function GET(request: NextRequest) {
   const persona = await getCurrentPersona(request.cookies);
@@ -37,10 +37,15 @@ export async function POST(request: NextRequest) {
     const input = parseCreateZymixMessageInput(body);
     const store = getBackendStore();
     const message = await store.createZymixMessage(persona.id, input);
+    const plannerSession =
+      input.threadId === "group:seablings" && isPlannerParticipantId(persona.id) && /(^|\s)@planner\b/i.test(input.text)
+        ? await store.createOrResumePlannerSession(input.threadId, persona.id)
+        : null;
 
     return NextResponse.json(
       {
         message,
+        plannerSession,
         mode: store.mode
       },
       { status: 201 }

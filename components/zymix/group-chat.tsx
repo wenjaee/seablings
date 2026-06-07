@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, BadgeCheck, Camera, Mic, MoreHorizontal, Plus, RefreshCcw, Send, Sticker } from "lucide-react";
 import { type RealtimeChannel } from "@supabase/supabase-js";
 
 import { Avatar } from "@/components/zymix/avatar";
+import {
+  PlannerCelebration,
+  PlannerDock,
+  PlannerThread,
+  type CriteriaSubmitPayload,
+  type PlannerSession
+} from "@/components/zymix/planner-ui";
 import { useCurrentPersona } from "@/components/zymix/persona-session";
 import { getBrowserSupabaseClient } from "@/lib/zymix/supabase-browser";
 import { getThreadData, getZymixPersona, type ThreadData, type ThreadMessage, type ZymixPersonaId } from "@/lib/zymix/data";
@@ -15,6 +22,10 @@ type ZymixMessageResponse = {
 };
 
 type MessageRecord = Record<string, unknown>;
+
+type PlannerApiResponse = {
+  session?: PlannerSession | null;
+};
 
 function formatMessageTime(value: string) {
   const date = new Date(value);
@@ -35,6 +46,14 @@ function isRecord(value: unknown): value is MessageRecord {
 
 function readString(value: unknown) {
   return typeof value === "string" ? value : null;
+}
+
+function readErrorMessage(payload: unknown, fallback: string) {
+  if (!isRecord(payload)) {
+    return fallback;
+  }
+
+  return typeof payload.error === "string" ? payload.error : fallback;
 }
 
 function normalizeMessageRecord(record: unknown, currentPersonaId: ZymixPersonaId): ThreadMessage | null {
@@ -95,6 +114,24 @@ async function fetchThreadMessages(threadId: string, currentPersonaId: ZymixPers
   return normalized;
 }
 
+async function fetchPlannerSession(threadId: string) {
+  const response = await fetch(`/api/planner-session?threadId=${encodeURIComponent(threadId)}`, {
+    cache: "no-store",
+    credentials: "include"
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    if (response.status === 404) {
+      throw new Error("Planner API unavailable.");
+    }
+    throw new Error(readErrorMessage(payload, "Unable to load planner session."));
+  }
+
+  const payload = (await response.json().catch(() => null)) as PlannerApiResponse | null;
+  return isRecord(payload) ? payload.session ?? null : null;
+}
+
 async function postMessage(threadId: string, text: string) {
   const response = await fetch("/api/zymix-messages", {
     method: "POST",
@@ -111,6 +148,71 @@ async function postMessage(threadId: string, text: string) {
   if (!response.ok) {
     throw new Error("Unable to send your message.");
   }
+}
+
+async function postPlannerCriteria(threadId: string, payload: CriteriaSubmitPayload) {
+  const response = await fetch("/api/planner-session/criteria", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      threadId,
+      ...payload
+    })
+  });
+
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => null);
+    throw new Error(readErrorMessage(errorPayload, "Failed to submit planner criteria."));
+  }
+
+  const responsePayload = (await response.json().catch(() => null)) as PlannerApiResponse | null;
+  return isRecord(responsePayload) ? responsePayload.session ?? null : null;
+}
+
+async function postPlannerVote(threadId: string, bucketItemIds: string[]) {
+  const response = await fetch("/api/planner-session/vote", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      threadId,
+      bucketItemIds
+    })
+  });
+
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => null);
+    throw new Error(readErrorMessage(errorPayload, "Failed to submit planner vote."));
+  }
+
+  const responsePayload = (await response.json().catch(() => null)) as PlannerApiResponse | null;
+  return isRecord(responsePayload) ? responsePayload.session ?? null : null;
+}
+
+async function postPlannerCancel(threadId: string) {
+  const response = await fetch("/api/planner-session/cancel", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      threadId
+    })
+  });
+
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => null);
+    throw new Error(readErrorMessage(errorPayload, "Failed to cancel planner."));
+  }
+
+  const responsePayload = (await response.json().catch(() => null)) as PlannerApiResponse | null;
+  return isRecord(responsePayload) ? responsePayload.session ?? null : null;
 }
 
 function subscribeToThread(threadId: string, onRefresh: () => void) {
@@ -231,7 +333,24 @@ function ChatView({
   setDraft,
   send,
   isSending,
-  isRefreshing
+  isRefreshing,
+  plannerSession,
+  plannerError,
+  isGroupChat,
+  showCelebration,
+  currentPersonaId,
+  showCriteriaOverlay,
+  showVotingOverlay,
+  canCancel,
+  onSubmitCriteria,
+  onSubmitVote,
+  onCancelPlanner,
+  isSubmittingCriteria,
+  isSubmittingVote,
+  isCanceling,
+  criteriaError,
+  voteError,
+  cancelError
 }: {
   thread: ThreadData;
   messages: ThreadMessage[];
@@ -241,6 +360,23 @@ function ChatView({
   send: () => void;
   isSending: boolean;
   isRefreshing: boolean;
+  plannerSession: PlannerSession | null;
+  plannerError: string | null;
+  isGroupChat: boolean;
+  showCelebration: boolean;
+  currentPersonaId: ZymixPersonaId;
+  showCriteriaOverlay: boolean;
+  showVotingOverlay: boolean;
+  canCancel: boolean;
+  onSubmitCriteria: (payload: CriteriaSubmitPayload) => Promise<void>;
+  onSubmitVote: (bucketItemIds: string[]) => Promise<void>;
+  onCancelPlanner: () => Promise<void>;
+  isSubmittingCriteria: boolean;
+  isSubmittingVote: boolean;
+  isCanceling: boolean;
+  criteriaError: string | null;
+  voteError: string | null;
+  cancelError: string | null;
 }) {
   const endRef = useRef<HTMLDivElement | null>(null);
   const hasDraft = draft.trim().length > 0;
@@ -282,6 +418,8 @@ function ChatView({
         </button>
       </header>
 
+      {isGroupChat && plannerSession ? <PlannerCelebration session={plannerSession} show={showCelebration} /> : null}
+
       <div className="zx-hide-scroll flex-1 overflow-y-auto px-4">
         <p className="py-4 text-center text-[13px] text-[var(--zx-muted)]">{thread.dateLabel}</p>
         {isRefreshing ? (
@@ -291,6 +429,8 @@ function ChatView({
           </p>
         ) : null}
         {error ? <p className="mb-3 text-center text-[13px] text-[#d94c3d]">{error}</p> : null}
+
+        {isGroupChat ? <PlannerThreadError message={plannerError} /> : null}
 
         {messages.map((message) =>
           message.kind === "system" ? (
@@ -327,23 +467,81 @@ function ChatView({
             </div>
           )
         )}
+        {isGroupChat && plannerSession ? (
+          <PlannerThread
+            session={plannerSession}
+            currentPersonaId={currentPersonaId}
+            canCancel={canCancel}
+            isCanceling={isCanceling}
+            cancelError={cancelError}
+            onCancel={onCancelPlanner}
+          />
+        ) : null}
         <div ref={endRef} />
       </div>
+
+      {isGroupChat && plannerSession ? (
+        <PlannerDock
+          session={plannerSession}
+          showCriteriaOverlay={showCriteriaOverlay}
+          showVotingOverlay={showVotingOverlay}
+          isSubmittingCriteria={isSubmittingCriteria}
+          isSubmittingVote={isSubmittingVote}
+          criteriaError={criteriaError}
+          voteError={voteError}
+          onSubmitCriteria={(payload) => onSubmitCriteria(payload)}
+          onSubmitVote={(bucketItemIds) => onSubmitVote(bucketItemIds)}
+        />
+      ) : null}
 
       <MessageComposer draft={draft} setDraft={setDraft} hasDraft={hasDraft} send={send} isSending={isSending} />
     </div>
   );
 }
 
+function PlannerThreadError({ message }: { message: string | null }) {
+  if (!message) {
+    return null;
+  }
+
+  return <p className="mb-3 text-center text-[12px] text-[#d94c3d]">{message}</p>;
+}
+
 export function GroupChat({ chatId }: { chatId: string }) {
   const { persona, isLoading, error: sessionError } = useCurrentPersona({ redirectToLogin: true });
   const personaId = persona?.id;
   const thread = useMemo(() => (personaId ? getThreadData(chatId, personaId) : null), [chatId, personaId]);
+  const isGroupChat = thread?.routeId === "seablings";
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [plannerSession, setPlannerSession] = useState<PlannerSession | null>(null);
+  const [plannerError, setPlannerError] = useState<string | null>(null);
+  const [plannerActionError, setPlannerActionError] = useState<string | null>(null);
+  const [isSubmittingCriteria, setIsSubmittingCriteria] = useState(false);
+  const [isSubmittingVote, setIsSubmittingVote] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
+  const [celebratedSessionId, setCelebratedSessionId] = useState<string | null>(null);
+
+  const refreshPlannerSession = useCallback(async () => {
+    if (!thread || !isGroupChat) {
+      return;
+    }
+
+    try {
+      const nextSession = await fetchPlannerSession(thread.threadId);
+      setPlannerSession(nextSession);
+      setPlannerError(null);
+    } catch (plannerLoadError) {
+      if (plannerLoadError instanceof Error) {
+        setPlannerError(plannerLoadError.message);
+      } else {
+        setPlannerError("Planner service unavailable.");
+      }
+    }
+  }, [isGroupChat, thread]);
 
   useEffect(() => {
     if (!thread || !persona) {
@@ -353,6 +551,23 @@ export function GroupChat({ chatId }: { chatId: string }) {
     const currentThread = thread;
     const currentPersona = persona;
     let isActive = true;
+    let pollId: number | null = null;
+    let channel: RealtimeChannel | null = null;
+
+    async function refreshFromRemote() {
+      try {
+        const nextMessages = await fetchThreadMessages(currentThread.threadId, currentPersona.id);
+        if (!isActive) {
+          return;
+        }
+
+        if (nextMessages.length > 0) {
+          setMessages(nextMessages);
+        }
+      } catch {
+        // Keep the local state when realtime/poll refresh fails.
+      }
+    }
 
     async function loadMessages() {
       setIsRefreshing(true);
@@ -381,33 +596,6 @@ export function GroupChat({ chatId }: { chatId: string }) {
 
     void loadMessages();
 
-    return () => {
-      isActive = false;
-    };
-  }, [persona, thread]);
-
-  useEffect(() => {
-    if (!thread || !persona) {
-      return;
-    }
-
-    const currentThread = thread;
-    const currentPersona = persona;
-    let pollId: number | null = null;
-    let channel: RealtimeChannel | null = null;
-    let isDisposed = false;
-
-    async function refreshFromRemote() {
-      try {
-        const nextMessages = await fetchThreadMessages(currentThread.threadId, currentPersona.id);
-        if (!isDisposed && nextMessages.length > 0) {
-          setMessages(nextMessages);
-        }
-      } catch {
-        // Keep the current local state when background refresh fails.
-      }
-    }
-
     channel = subscribeToThread(currentThread.threadId, () => {
       void refreshFromRemote();
     });
@@ -419,7 +607,7 @@ export function GroupChat({ chatId }: { chatId: string }) {
     }
 
     return () => {
-      isDisposed = true;
+      isActive = false;
       if (pollId) {
         window.clearInterval(pollId);
       }
@@ -428,6 +616,50 @@ export function GroupChat({ chatId }: { chatId: string }) {
       }
     };
   }, [persona, thread]);
+
+  useEffect(() => {
+    if (!thread || !isGroupChat) {
+      return;
+    }
+
+    let plannerPollId: number | null = null;
+    const initialPollId = window.setTimeout(() => {
+      void refreshPlannerSession();
+    }, 0);
+
+    plannerPollId = window.setInterval(() => {
+      void refreshPlannerSession();
+    }, 4000);
+
+    return () => {
+      window.clearTimeout(initialPollId);
+      if (plannerPollId) {
+        window.clearInterval(plannerPollId);
+      }
+    };
+  }, [isGroupChat, refreshPlannerSession, thread]);
+
+  useEffect(() => {
+    if (!plannerSession || !isGroupChat || plannerSession.status !== "completed") {
+      return;
+    }
+
+    const storageKey = `zymix-planner-celebrated:${plannerSession.id}`;
+    const hasBeenCelebrated = window.sessionStorage.getItem(storageKey) === "1";
+    const celebrationTimer = window.setTimeout(() => {
+      if (!hasBeenCelebrated) {
+        window.sessionStorage.setItem(storageKey, "1");
+        setCelebratedSessionId(plannerSession.id);
+        return;
+      }
+
+      setCelebratedSessionId(null);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(celebrationTimer);
+    };
+  }, [plannerSession, isGroupChat]);
 
   function replacePendingMessage(messageId: string, nextMessage: ThreadMessage) {
     setMessages((previousMessages) => previousMessages.map((message) => (message.id === messageId ? nextMessage : message)));
@@ -490,12 +722,106 @@ export function GroupChat({ chatId }: { chatId: string }) {
       if (nextMessages?.length) {
         setMessages(nextMessages);
       }
+      await refreshPlannerSession();
     } catch (sendError) {
       markFailedMessage(pendingId, sendError instanceof Error ? sendError.message : "Unable to send your message.");
     } finally {
       setIsSending(false);
     }
   }
+
+  async function submitPlannerCriteria(payload: CriteriaSubmitPayload) {
+    if (!thread || !persona) {
+      return;
+    }
+
+    setIsSubmittingCriteria(true);
+    setPlannerActionError(null);
+
+    try {
+      const nextSession = await postPlannerCriteria(thread.threadId, payload);
+      if (nextSession) {
+        setPlannerSession(nextSession);
+      }
+      setPlannerError(null);
+      await refreshPlannerSession();
+    } catch (criteriaError) {
+      setPlannerActionError(criteriaError instanceof Error ? criteriaError.message : "Failed to submit planner criteria.");
+    } finally {
+      setIsSubmittingCriteria(false);
+    }
+  }
+
+  async function submitPlannerVote(bucketItemIds: string[]) {
+    if (!thread || !persona) {
+      return;
+    }
+
+    setIsSubmittingVote(true);
+    setPlannerActionError(null);
+
+    try {
+      const nextSession = await postPlannerVote(thread.threadId, bucketItemIds);
+      if (nextSession) {
+        setPlannerSession(nextSession);
+      }
+      setPlannerError(null);
+      await refreshPlannerSession();
+    } catch (voteError) {
+      setPlannerActionError(voteError instanceof Error ? voteError.message : "Failed to submit planner vote.");
+    } finally {
+      setIsSubmittingVote(false);
+    }
+  }
+
+  async function cancelPlannerSession() {
+    if (!thread || !persona) {
+      return;
+    }
+
+    setIsCanceling(true);
+    setPlannerActionError(null);
+
+    try {
+      const nextSession = await postPlannerCancel(thread.threadId);
+      if (nextSession) {
+        setPlannerSession(nextSession);
+      }
+      setPlannerError(null);
+      await refreshPlannerSession();
+    } catch (plannerCancelError) {
+      setPlannerActionError(plannerCancelError instanceof Error ? plannerCancelError.message : "Failed to cancel planner.");
+    } finally {
+      setIsCanceling(false);
+    }
+  }
+
+  const isTesterPersona = personaId === "tester";
+  const isParticipant = Boolean(personaId && plannerSession?.participants.includes(personaId));
+  const hasSubmittedCriteria = Boolean(personaId ? plannerSession?.criteriaByUserId?.[personaId] : false);
+  const hasSubmittedVotes = Boolean(personaId ? plannerSession?.votesByUserId?.[personaId] : false);
+  const canCancelPlanner = Boolean(
+    isGroupChat &&
+      isParticipant &&
+      !isTesterPersona &&
+      plannerSession &&
+      (plannerSession.status === "collecting" || plannerSession.status === "voting")
+  );
+  const showCriteriaOverlay = Boolean(
+    isGroupChat &&
+      isParticipant &&
+      !isTesterPersona &&
+      plannerSession?.status === "collecting" &&
+      !hasSubmittedCriteria
+  );
+  const showVotingOverlay = Boolean(
+    isGroupChat &&
+      isParticipant &&
+      !isTesterPersona &&
+      plannerSession?.status === "voting" &&
+      !hasSubmittedVotes
+  );
+  const showCelebration = Boolean(celebratedSessionId && plannerSession && plannerSession.id === celebratedSessionId);
 
   if (isLoading) {
     return <LoadingState />;
@@ -506,6 +832,10 @@ export function GroupChat({ chatId }: { chatId: string }) {
   }
 
   if (!thread) {
+    return <ErrorState message="This chat is unavailable for the current persona." />;
+  }
+
+  if (!personaId) {
     return <ErrorState message="This chat is unavailable for the current persona." />;
   }
 
@@ -521,6 +851,29 @@ export function GroupChat({ chatId }: { chatId: string }) {
       }}
       isSending={isSending}
       isRefreshing={isRefreshing}
+      plannerSession={isGroupChat ? plannerSession : null}
+      plannerError={isGroupChat ? plannerError : null}
+      isGroupChat={isGroupChat}
+      showCelebration={showCelebration}
+      currentPersonaId={personaId!}
+      canCancel={canCancelPlanner}
+      showCriteriaOverlay={showCriteriaOverlay}
+      showVotingOverlay={showVotingOverlay}
+      onSubmitCriteria={(payload) => {
+        return submitPlannerCriteria(payload);
+      }}
+      onSubmitVote={(bucketItemIds) => {
+        return submitPlannerVote(bucketItemIds);
+      }}
+      onCancelPlanner={() => {
+        return cancelPlannerSession();
+      }}
+      isSubmittingCriteria={isSubmittingCriteria}
+      isSubmittingVote={isSubmittingVote}
+      isCanceling={isCanceling}
+      criteriaError={isGroupChat && !isTesterPersona ? plannerActionError : null}
+      voteError={isGroupChat && !isTesterPersona ? plannerActionError : null}
+      cancelError={isGroupChat && !isTesterPersona && canCancelPlanner ? plannerActionError : null}
     />
   );
 }
