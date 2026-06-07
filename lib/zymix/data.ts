@@ -65,7 +65,7 @@ const PERSONAS: ZymixPersona[] = [
     name: "Jeff",
     handle: "@jeff",
     color: "#0f766e",
-    avatar: { kind: "checker" },
+    avatar: { kind: "image", src: "/avatars/jeff-profile.jpg" },
     followers: 12,
     following: 19,
     stats: [
@@ -80,7 +80,7 @@ const PERSONAS: ZymixPersona[] = [
     name: "Praya",
     handle: "@praya",
     color: "#b9714e",
-    avatar: { kind: "initials", initials: "P", bg: "#b9714e" },
+    avatar: { kind: "image", src: "/avatars/praya-profile.jpg" },
     followers: 8,
     following: 15,
     stats: [
@@ -95,7 +95,7 @@ const PERSONAS: ZymixPersona[] = [
     name: "Tana",
     handle: "@tana",
     color: "#5a7f36",
-    avatar: { kind: "initials", initials: "T", bg: "#5a7f36" },
+    avatar: { kind: "image", src: "/avatars/tana-profile.jpg" },
     followers: 6,
     following: 11,
     stats: [
