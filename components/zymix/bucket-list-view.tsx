@@ -312,12 +312,19 @@ function ItemSheet({
           <span className="text-[15px] font-semibold text-[var(--zx-ink)]">
             {visited ? "Visited" : "Mark as visited"}
           </span>
-          <span
-            className="flex h-9 w-9 items-center justify-center rounded-full"
-            style={{ background: "var(--zx-brand)" }}
-          >
-            <Check size={18} strokeWidth={2.5} color="white" />
-          </span>
+          {visited ? (
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-full"
+              style={{ background: "var(--zx-brand)" }}
+            >
+              <Check size={18} strokeWidth={2.5} color="white" />
+            </span>
+          ) : (
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-full border-2"
+              style={{ borderColor: "var(--zx-faint)" }}
+            />
+          )}
         </button>
       </div>
     </>
