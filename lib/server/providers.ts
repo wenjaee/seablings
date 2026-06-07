@@ -2,7 +2,12 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
-import { bucketCategoryValues, type CapturePayload } from "@/lib/domain";
+import {
+  bucketCategoryValues,
+  type CapturePayload,
+  type PlannerAggregateCriteria,
+  type PlannerCriteriaAnswer
+} from "@/lib/domain";
 import {
   inferPlaceCategory,
   normalizeConfidence,
@@ -20,6 +25,7 @@ const REQUEST_TIMEOUT_MS = 20_000;
 const VIDEO_EXTRACTION_TIMEOUT_MS = 60_000;
 const VIDEO_DOWNLOAD_TIMEOUT_MS = 30_000;
 const MAX_INLINE_VIDEO_BYTES = 18 * 1024 * 1024;
+const PLANNER_AGGREGATE_BUDGET_CAP = 60;
 const ENRICHMENT_CORE_FIELDS = ["address", "postalCode", "priceEstimate", "openingHours", "websiteUrl"] as const;
 const RESERVED_TAGS = new Set([
   "ai",
@@ -116,6 +122,19 @@ export type ProviderEmbedding = {
   dimensions: number;
   contentHash: string;
   skipped?: boolean;
+};
+
+type PlannerAggregateCriteriaResponse = {
+  budgetMin?: unknown;
+  budgetMax?: unknown;
+  availabilitySummary?: unknown;
+  proposedTime?: unknown;
+  areaHints?: unknown;
+  vibeHints?: unknown;
+  vetoes?: unknown;
+  strictVetoes?: unknown;
+  source?: unknown;
+  confidence?: unknown;
 };
 
 type GeminiExtractionResponse = {
@@ -397,6 +416,273 @@ export async function createGeminiEmbedding(text: string): Promise<ProviderEmbed
       skipped: true
     };
   }
+}
+
+export async function buildPlannerAggregateCriteria(
+  criteria: PlannerCriteriaAnswer[]
+): Promise<PlannerAggregateCriteria> {
+  const fallback = buildFallbackPlannerAggregateCriteria(criteria);
+  if (criteria.length === 0) {
+    return fallback;
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) {
+    return fallback;
+  }
+
+  const prompt = buildPlannerAggregateCriteriaPrompt(criteria);
+  try {
+    const response = await fetchJson(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_EXTRACTION_MODEL}:generateContent`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseJsonSchema: PLANNER_AGGREGATE_CRITERIA_SCHEMA
+        }
+      })
+    });
+
+    const parsed = parseJsonLoose<PlannerAggregateCriteriaResponse>(getGeminiText(response));
+    const normalized = sanitizePlannerAggregateCriteriaResponse(parsed);
+    return normalized ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function buildPlannerAggregateCriteriaPrompt(criteria: PlannerCriteriaAnswer[]): string {
+  const criteriaSummary = criteria
+    .map((entry, index) => {
+      const budgetMax = typeof entry.budgetMax === "number" ? entry.budgetMax : entry.budgetMin;
+      return [
+        `Person ${index + 1}:`,
+        `- availabilityMode: ${entry.availabilityMode}`,
+        `- availability: ${entry.availability}`,
+        `- budgetRange: ${entry.budgetMin}-${entry.budgetMax}`,
+        `- vetoes: ${entry.vetoes.join(", ") || "none"}`,
+        `- raw veto text: ${entry.vetoText ?? "none"}`
+      ].join("\n");
+    })
+    .join("\n\n");
+
+  return [
+    "You are helping with group outing planning. Merge three people’s preferences into one aggregate profile.",
+    "Return compact JSON matching the provided schema.",
+    "",
+    "From the inputs, infer:",
+    "- budgetMin and budgetMax in GBP as integers.",
+    "- availabilitySummary: a short phrase (max 80 chars) and proposedTime label for the whole group.",
+    "- areaHints: up to 5 likely area preferences.",
+    "- vibeHints: up to 7 likely vibe/category preferences.",
+    "- vetoes: hard conflicts that should avoid items.",
+    "- strictVetoes: only the most restrictive vetoes.",
+    "- confidence: 0 to 1 with higher meaning clearer agreement.",
+    "",
+    `Criteria inputs:\n${criteriaSummary}`,
+    "",
+    "Prefer concise arrays and do not invent specific streets/restaurants."
+  ].join("\n");
+}
+
+function sanitizePlannerAggregateCriteriaResponse(
+  response: PlannerAggregateCriteriaResponse | null
+): PlannerAggregateCriteria | null {
+  if (!response) {
+    return null;
+  }
+
+  const availabilitySummary = normalizePlannerText(response.availabilitySummary, 80) ?? "Anytime";
+  const proposedTime = normalizePlannerText(response.proposedTime, 40) ?? deriveHeuristicProposedTime([]);
+  const budgetMin = normalizePlannerNumericBounds(response.budgetMin, 0, PLANNER_AGGREGATE_BUDGET_CAP, 0);
+  const budgetMax = normalizePlannerNumericBounds(response.budgetMax, 0, PLANNER_AGGREGATE_BUDGET_CAP, budgetMin);
+  const areaHints = normalizePlannerAggregateStringHints(response.areaHints);
+  const vibeHints = normalizePlannerAggregateStringHints(response.vibeHints);
+  const vetoes = normalizePlannerAggregateStringHints(response.vetoes);
+  const strictVetoes = normalizePlannerAggregateStringHints(response.strictVetoes).slice(0, 3);
+  const confidence = normalizePlannerConfidence(response.confidence);
+
+  return {
+    version: 1,
+    budgetMin,
+    budgetMax: Math.max(budgetMin, budgetMax),
+    availabilitySummary,
+    proposedTime,
+    areaHints,
+    vibeHints,
+    vetoes,
+    strictVetoes,
+    source: "gemini",
+    confidence
+  };
+}
+
+function buildFallbackPlannerAggregateCriteria(criteria: PlannerCriteriaAnswer[]): PlannerAggregateCriteria {
+  const submitted = criteria.filter((entry) => entry.budgetMax > 0 || entry.vetoes.length > 0 || entry.availability.length > 0);
+  if (submitted.length === 0) {
+    return {
+      version: 1,
+      budgetMin: 0,
+      budgetMax: PLANNER_AGGREGATE_BUDGET_CAP,
+      availabilitySummary: "Whenever",
+      proposedTime: "Saturday 12:00",
+      areaHints: [],
+      vibeHints: [],
+      vetoes: [],
+      strictVetoes: [],
+      source: "heuristic"
+    };
+  }
+
+  const budgetMins = submitted.map((entry) => entry.budgetMin);
+  const budgetMaxes = submitted.map((entry) => entry.budgetMax);
+  const budgetMin = budgetMins.length > 0 ? Math.max(0, Math.min(...budgetMins)) : 0;
+  const budgetMax = budgetMaxes.length > 0 ? Math.max(0, Math.min(...budgetMaxes)) : PLANNER_AGGREGATE_BUDGET_CAP;
+  const allVetoes = dedupePlannerTextArray(submitted.flatMap((entry) => entry.vetoes), 12);
+  const strictVetoes = dedupePlannerTextArray(
+    submitted.flatMap((entry) => entry.vetoes.map((veto) => (veto.length >= 8 ? veto : veto.toLowerCase()))),
+    8
+  );
+  const proposedTime =
+    submitted.every((entry) => entry.availability.toLowerCase().includes("sunday"))
+      ? "Sunday 14:00"
+      : submitted.every(
+          (entry) => entry.availability.toLowerCase().includes("evening") || entry.availability.toLowerCase().includes("tonight")
+        )
+        ? "Friday 19:30"
+        : "Saturday 12:00";
+
+  const areaHints = dedupePlannerTextArray(submitted.map((entry) => entry.availability).slice(0, 5), 5);
+  const vibeHints = dedupePlannerTextArray(submitted.flatMap((entry) => entry.vetoes), 7);
+
+  return {
+    version: 1,
+    budgetMin,
+    budgetMax,
+    availabilitySummary: "Group consensus",
+    proposedTime,
+    areaHints,
+    vibeHints,
+    vetoes: allVetoes,
+    strictVetoes,
+    source: "heuristic"
+  };
+}
+
+function normalizePlannerText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const text = value.trim().replace(/\s+/g, " ");
+  if (!text) {
+    return null;
+  }
+
+  return text.slice(0, maxLength);
+}
+
+function normalizePlannerConfidence(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0.66;
+}
+
+function normalizePlannerNumericBounds(
+  value: unknown,
+  min: number,
+  max: number,
+  fallback: number
+): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  if (!Number.isInteger(value)) {
+    return Math.max(min, Math.min(max, Math.round(value)));
+  }
+
+  return Math.max(min, Math.min(max, value));
+}
+
+function normalizePlannerAggregateStringHints(value: unknown, limit = 8): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const hints: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of value) {
+    if (typeof entry !== "string") {
+      continue;
+    }
+
+    const normalized = normalizePlannerText(entry, 60);
+    if (!normalized) {
+      continue;
+    }
+
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    hints.push(normalized);
+    if (hints.length >= limit) {
+      break;
+    }
+  }
+
+  return hints;
+}
+
+function dedupePlannerTextArray(values: string[], limit: number): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    result.push(value.trim().slice(0, 60));
+    if (result.length >= limit) {
+      break;
+    }
+  }
+
+  return result;
+}
+
+function deriveHeuristicProposedTime(criteria: PlannerCriteriaAnswer[]): string {
+  if (criteria.length === 0) {
+    return "Saturday 12:00";
+  }
+
+  const normalized = criteria.map((entry) => entry.availability.toLowerCase());
+  if (normalized.every((value) => value.includes("sunday"))) {
+    return "Sunday 14:00";
+  }
+
+  if (normalized.every((value) => value.includes("after") || value.includes("tonight") || value.includes("evening"))) {
+    return "Friday 19:30";
+  }
+
+  return "Saturday 12:00";
 }
 
 function buildGeminiExtractionPrompt(payload: ProviderCapturePayload): string {
@@ -1576,6 +1862,35 @@ const EXTRACTION_RESPONSE_SCHEMA = {
     }
   },
   required: ["places"]
+};
+
+const PLANNER_AGGREGATE_CRITERIA_SCHEMA = {
+  type: "object",
+  properties: {
+    budgetMin: { type: "number" },
+    budgetMax: { type: "number" },
+    availabilitySummary: { type: "string" },
+    proposedTime: { type: "string" },
+    areaHints: {
+      type: "array",
+      items: { type: "string" }
+    },
+    vibeHints: {
+      type: "array",
+      items: { type: "string" }
+    },
+    vetoes: {
+      type: "array",
+      items: { type: "string" }
+    },
+    strictVetoes: {
+      type: "array",
+      items: { type: "string" }
+    },
+    source: { type: "string", enum: ["gemini"] },
+    confidence: { type: "number" }
+  },
+  required: ["budgetMin", "budgetMax"]
 };
 
 const PERPLEXITY_ENRICHMENT_SCHEMA = {

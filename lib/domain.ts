@@ -1,5 +1,7 @@
 export type PersonaId = "jeff" | "praya" | "tana" | "tester";
 
+export type PlannerParticipantId = Extract<PersonaId, "jeff" | "praya" | "tana">;
+
 export type SourcePlatform = "tiktok" | "instagram" | "screenshot" | "manual" | "text";
 
 export type BucketItemStatus = "candidate" | "saved" | "completed" | "rejected" | "archived";
@@ -110,6 +112,88 @@ export type Recommendation = {
   score: number;
   reasons: string[];
   warnings: string[];
+};
+
+export type PlannerSessionStatus = "collecting" | "voting" | "completed" | "canceled";
+
+export type PlannerCriteriaAnswer = {
+  userId: PlannerParticipantId;
+  availabilityMode: "Whenever" | "Custom";
+  availability: string;
+  budgetMode: "slider" | "text";
+  budgetAmount: number;
+  budgetOption?: string;
+  budgetText?: string;
+  budgetMin: number;
+  budgetMax: number;
+  areaHints: string[];
+  vibeHints: string[];
+  vetoes: string[];
+  vetoText?: string;
+  submittedAt: string;
+};
+
+export type PlannerAggregateCriteria = {
+  version: 1;
+  budgetMin: number;
+  budgetMax: number;
+  availabilitySummary: string;
+  proposedTime: string;
+  areaHints: string[];
+  vibeHints: string[];
+  vetoes: string[];
+  strictVetoes: string[];
+  source?: "heuristic" | "gemini";
+  confidence?: number;
+};
+
+export type PlannerRecommendation = {
+  owner: {
+    id: PersonaId;
+    name: string;
+  };
+  bucketItemId: string;
+  item: BucketItem;
+  score: number;
+  reasons: string[];
+  warnings: string[];
+  distanceLabel?: string | null;
+  mapsUrl?: string | null;
+};
+
+export type PlannerVote = {
+  userId: PlannerParticipantId;
+  bucketItemIds: string[];
+  submittedAt: string;
+};
+
+export type PlannerFinalPlan = {
+  bucketItemId: string;
+  recommendation: PlannerRecommendation;
+  winningItems: BucketItem[];
+  proposedTime: string;
+  calendarUrl: string;
+  winnerIds: string[];
+  tiedWinnerIds: string[];
+  voteCounts: Record<string, number>;
+};
+
+export type PlannerSession = {
+  id: string;
+  threadId: string;
+  initiatorUserId: PersonaId;
+  status: PlannerSessionStatus;
+  canceledAt?: string;
+  canceledByUserId?: PlannerParticipantId;
+  participants: PlannerParticipantId[];
+  criteriaByUserId: Partial<Record<PlannerParticipantId, PlannerCriteriaAnswer>>;
+  aggregateCriteria?: PlannerAggregateCriteria;
+  votesByUserId: Partial<Record<PlannerParticipantId, PlannerVote>>;
+  recommendations: PlannerRecommendation[];
+  proposedTime?: string;
+  finalPlan?: PlannerFinalPlan;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ChatMessage = {

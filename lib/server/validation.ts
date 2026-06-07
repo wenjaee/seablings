@@ -7,6 +7,7 @@ import {
   type BucketItemStatus,
   type CapturePayload,
   type IngestionTaskStatus,
+  type PlannerParticipantId,
   type PersonaId,
   type PriceEstimateTier,
   type SourcePlatform
@@ -14,6 +15,9 @@ import {
 import { personas } from "@/lib/fixtures";
 
 export class ValidationError extends Error {}
+export class NotFoundError extends Error {}
+export class ConflictError extends Error {}
+export class AuthorizationError extends Error {}
 
 const personaIds = new Set<PersonaId>(personas.map((persona) => persona.id));
 const sourcePlatforms = new Set<SourcePlatform>(["tiktok", "instagram", "screenshot", "manual", "text"]);
@@ -87,6 +91,31 @@ export type ListZymixMessageFilters = {
 export type CreateZymixMessageInput = {
   threadId: string;
   text: string;
+};
+
+export type PlannerSessionFilters = {
+  threadId: string;
+};
+
+export type SubmitPlannerCriteriaInput = {
+  threadId: string;
+  availabilityMode: "Whenever" | "Custom";
+  availability: string;
+  budgetMode: "slider" | "text";
+  budgetAmount: number;
+  budgetOption?: string;
+  budgetText?: string;
+  vetoText?: string;
+  vetoes: string[];
+};
+
+export type SubmitPlannerVoteInput = {
+  threadId: string;
+  bucketItemIds: string[];
+};
+
+export type CancelPlannerSessionInput = {
+  threadId: string;
 };
 
 export function isPersonaId(value: unknown): value is PersonaId {
@@ -347,6 +376,99 @@ export function parseCreateZymixMessageInput(value: unknown): CreateZymixMessage
   return { threadId, text };
 }
 
+export function parsePlannerSessionFilters(searchParams: URLSearchParams): PlannerSessionFilters {
+  const threadId = parseThreadId(searchParams.get("threadId"));
+
+  if (!threadId) {
+    throw new ValidationError("threadId is required.");
+  }
+
+  return { threadId };
+}
+
+export function parseSubmitPlannerCriteriaInput(value: unknown): SubmitPlannerCriteriaInput {
+  if (!isRecord(value)) {
+    throw new ValidationError("Planner criteria payload must be a JSON object.");
+  }
+
+  const threadId = parseThreadId(value.threadId);
+  if (!threadId) {
+    throw new ValidationError("Planner criteria requires a valid threadId.");
+  }
+
+  const availability = normalizeFreeText(value.availability, 160);
+  if (!availability) {
+    throw new ValidationError("Planner criteria requires availability.");
+  }
+
+  const availabilityMode = normalizePlannerAvailabilityMode(value.availabilityMode, availability);
+  const budgetOption = normalizeBudgetOption(value.budgetOption);
+  const budgetMode = normalizePlannerBudgetMode(value.budgetMode);
+  const budgetAmount = normalizePlannerBudgetAmount(value.budgetAmount ?? value.budgetSliderValue);
+  const budgetText = normalizeFreeText(value.budgetText, 80);
+
+  const normalizedBudgetMode =
+    budgetMode === "slider" || (budgetMode === "text" && budgetAmount !== undefined && budgetOption === undefined && budgetText === undefined)
+      ? "slider"
+      : budgetMode;
+
+  if (normalizedBudgetMode === "slider" && budgetAmount === undefined) {
+    throw new ValidationError("Planner criteria requires budgetAmount.");
+  }
+  if (normalizedBudgetMode !== "slider" && budgetOption === undefined && budgetText === undefined) {
+    throw new ValidationError("Planner criteria requires budgetAmount or budgetOption.");
+  }
+
+  const vetoText = normalizeFreeText(value.vetoText, 320);
+  const vetoes = normalizePlannerVetoesFromSource(vetoText, value.vetoes);
+  return {
+    threadId,
+    availabilityMode,
+    availability,
+    budgetMode: normalizedBudgetMode,
+    budgetAmount: budgetAmount ?? 0,
+    budgetOption,
+    budgetText,
+    vetoText,
+    vetoes
+  };
+}
+
+export function parseSubmitPlannerVoteInput(value: unknown): SubmitPlannerVoteInput {
+  if (!isRecord(value)) {
+    throw new ValidationError("Planner vote payload must be a JSON object.");
+  }
+
+  const threadId = parseThreadId(value.threadId);
+  if (!threadId) {
+    throw new ValidationError("Planner vote requires a valid threadId.");
+  }
+
+  if (!Array.isArray(value.bucketItemIds)) {
+    throw new ValidationError("Planner vote requires bucketItemIds.");
+  }
+
+  const bucketItemIds = uniqueBucketItemIds(value.bucketItemIds);
+  if (bucketItemIds.length === 0 || bucketItemIds.length > 3) {
+    throw new ValidationError("Planner vote requires 1 to 3 bucketItemIds.");
+  }
+
+  return { threadId, bucketItemIds };
+}
+
+export function parseCancelPlannerSessionInput(value: unknown): CancelPlannerSessionInput {
+  if (!isRecord(value)) {
+    throw new ValidationError("Planner cancel payload must be a JSON object.");
+  }
+
+  const threadId = parseThreadId(value.threadId);
+  if (!threadId) {
+    throw new ValidationError("Planner cancel requires a valid threadId.");
+  }
+
+  return { threadId };
+}
+
 export function normalizePriceEstimate(value: unknown): PriceEstimateTier {
   if (typeof value !== "string") {
     return "$$";
@@ -437,6 +559,116 @@ function normalizeMessageText(value: unknown): string | null {
   return text;
 }
 
+function normalizeFreeText(value: unknown, maxLength: number): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const text = value.trim().replace(/\s+/g, " ");
+  if (text.length === 0) {
+    return undefined;
+  }
+
+  return text.slice(0, maxLength);
+}
+
+function normalizeBudgetOption(value: unknown): string | undefined {
+  return normalizeFreeText(value, 40);
+}
+
+function normalizePlannerBudgetMode(value: unknown): "slider" | "text" {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "slider") {
+      return "slider";
+    }
+  }
+
+  return "text";
+}
+
+function normalizePlannerBudgetAmount(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return normalizePlannerBudget(value);
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value.trim(), 10);
+    if (Number.isFinite(parsed)) {
+      return normalizePlannerBudget(parsed);
+    }
+  }
+
+  return undefined;
+}
+
+function normalizePlannerBudget(value: number): number {
+  const rounded = Math.round(value);
+  if (!Number.isFinite(rounded) || rounded < 0) {
+    return 0;
+  }
+
+  if (rounded <= 40) {
+    return rounded;
+  }
+
+  return 60;
+}
+
+function normalizePlannerAvailabilityMode(value: unknown, availability: string): "Whenever" | "Custom" {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "whenever") {
+      return "Whenever";
+    }
+    if (normalized === "custom") {
+      return "Custom";
+    }
+  }
+
+  return availability.toLowerCase() === "whenever" || availability.toLowerCase().includes("whenever") ? "Whenever" : "Custom";
+}
+
+function normalizePlannerVetoesFromSource(vetoText: string | undefined, rawVetoes: unknown): string[] {
+  const vetoes: string[] = [];
+  const seen = new Set<string>();
+
+  if (vetoText) {
+    for (const veto of vetoText.split(/[,\n;]+/)) {
+      const normalized = normalizeFreeText(veto, 60);
+      if (!normalized) {
+        continue;
+      }
+
+      const key = normalized.toLowerCase();
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      vetoes.push(normalized);
+      if (vetoes.length >= 8) {
+        return vetoes;
+      }
+    }
+  }
+
+  for (const veto of normalizePlannerVetoes(rawVetoes)) {
+    const key = veto.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    vetoes.push(veto);
+    if (vetoes.length >= 8) {
+      break;
+    }
+  }
+
+  return vetoes;
+}
+
 function optionalString(value: unknown): string | undefined {
   if (typeof value !== "string") {
     return undefined;
@@ -469,8 +701,62 @@ function normalizeTags(value: unknown): string[] {
     .filter(Boolean);
 }
 
+function normalizePlannerVetoes(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const vetoes: string[] = [];
+  const seen = new Set<string>();
+
+  for (const entry of value) {
+    const veto = normalizeFreeText(entry, 60);
+    if (!veto) {
+      continue;
+    }
+
+    const key = veto.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    vetoes.push(veto);
+    if (vetoes.length >= 8) {
+      break;
+    }
+  }
+
+  return vetoes;
+}
+
+function uniqueBucketItemIds(value: unknown[]): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+
+  for (const entry of value) {
+    if (typeof entry !== "string") {
+      continue;
+    }
+
+    const id = entry.trim();
+    if (id.length === 0 || id.length > 120 || seen.has(id)) {
+      continue;
+    }
+
+    seen.add(id);
+    ids.push(id);
+  }
+
+  return ids;
+}
+
 export function normalizeStringArray(value: unknown): string[] {
   return normalizeTags(value);
+}
+
+export function isPlannerParticipantId(value: unknown): value is PlannerParticipantId {
+  return value === "jeff" || value === "praya" || value === "tana";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

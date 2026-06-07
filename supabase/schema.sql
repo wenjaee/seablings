@@ -102,6 +102,18 @@ create table if not exists zymix_messages (
 create index if not exists zymix_messages_thread_created_at_idx on zymix_messages (thread_id, created_at asc);
 create index if not exists zymix_messages_user_id_idx on zymix_messages (user_id, created_at desc);
 
+create table if not exists planner_sessions (
+  id text primary key,
+  thread_id text not null,
+  initiator_user_id text not null references personas(id) on delete cascade,
+  status text not null check (status in ('collecting', 'voting', 'completed')),
+  state jsonb not null,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists planner_sessions_thread_updated_at_idx on planner_sessions (thread_id, updated_at desc);
+
 create table if not exists planner_criteria (
   user_id text primary key references personas(id) on delete cascade,
   budget_max integer not null check (budget_max >= 0),
@@ -125,5 +137,6 @@ create table if not exists recommendations (
 -- alter table bucket_items enable row level security;
 -- alter table messages enable row level security;
 -- alter table zymix_messages enable row level security;
+-- alter table planner_sessions enable row level security;
 -- alter table planner_criteria enable row level security;
 -- alter table recommendations enable row level security;
