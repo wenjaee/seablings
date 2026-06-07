@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Camera, Mic, MoreHorizontal, Plus, Send, Sticker } from "lucide-react";
 
+import { PlannerCelebration, PlannerDock, PlannerThread } from "@/components/planner/planner-layer";
+import { usePlanner } from "@/components/planner/planner-provider";
 import { Avatar } from "@/components/zymix/avatar";
 import type { AvatarSpec, ThreadData, ThreadMessage } from "@/lib/zymix/data";
 
@@ -13,6 +15,7 @@ export function GroupChat({ thread }: { thread: ThreadData }) {
   const [messages, setMessages] = useState<ThreadMessage[]>(thread.messages);
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
+  const { start } = usePlanner();
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -41,12 +44,17 @@ export function GroupChat({ thread }: { thread: ThreadData }) {
       }
     ]);
     setDraft("");
+
+    if (text.toLowerCase().includes("@planner")) {
+      void start();
+    }
   }
 
   const hasDraft = draft.trim().length > 0;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <PlannerCelebration />
       <header className="flex shrink-0 items-center gap-2 px-3 pb-2 pt-1">
         <Link
           href="/"
@@ -104,8 +112,11 @@ export function GroupChat({ thread }: { thread: ThreadData }) {
             </div>
           )
         )}
+        <PlannerThread />
         <div ref={endRef} />
       </div>
+
+      <PlannerDock />
 
       <div className="shrink-0 px-3 pt-2" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
         <div className="flex items-center gap-2">
