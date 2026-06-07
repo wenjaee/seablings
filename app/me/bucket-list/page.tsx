@@ -118,6 +118,9 @@ function StickerCard({
         </span>
       )}
       <p className="text-[12px] font-bold text-[var(--zx-ink)]">{meta.plural}</p>
+      <p className="text-[11px] text-[var(--zx-muted)]">
+        {count} {count === 1 ? "place" : "places"}
+      </p>
     </Link>
   );
 }
