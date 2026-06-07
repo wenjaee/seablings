@@ -36,11 +36,11 @@ export default async function BucketListLandingPage() {
 
   return (
     <PhoneShell>
-      <main className="zx-hide-scroll flex-1 overflow-y-auto bg-[#f5efe6] px-4 pt-1">
+      <main className="zx-hide-scroll flex-1 overflow-y-auto px-4 pt-1">
         <div className="relative flex items-center py-3">
           <Link
             href="/me"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/70"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--zx-surface)]"
           >
             <ChevronLeft size={18} className="text-[var(--zx-ink)]" />
           </Link>
@@ -56,26 +56,28 @@ export default async function BucketListLandingPage() {
         {populated.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="flex gap-3 pb-8">
-            <div className="flex flex-1 flex-col gap-6">
-              {left.map((cat) => (
-                <StickerCard
-                  key={cat}
-                  cat={cat}
-                  meta={CATEGORY_META[cat]}
-                  count={counts.get(cat) ?? 0}
-                />
-              ))}
-            </div>
-            <div className="mt-20 flex flex-1 flex-col gap-6">
-              {right.map((cat) => (
-                <StickerCard
-                  key={cat}
-                  cat={cat}
-                  meta={CATEGORY_META[cat]}
-                  count={counts.get(cat) ?? 0}
-                />
-              ))}
+          <div className="rounded-3xl bg-[#f5efe6] px-4 pb-8 pt-6">
+            <div className="flex gap-3">
+              <div className="flex flex-1 flex-col gap-6">
+                {left.map((cat) => (
+                  <StickerCard
+                    key={cat}
+                    cat={cat}
+                    meta={CATEGORY_META[cat]}
+                    count={counts.get(cat) ?? 0}
+                  />
+                ))}
+              </div>
+              <div className="mt-20 flex flex-1 flex-col gap-6">
+                {right.map((cat) => (
+                  <StickerCard
+                    key={cat}
+                    cat={cat}
+                    meta={CATEGORY_META[cat]}
+                    count={counts.get(cat) ?? 0}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -98,24 +100,20 @@ function StickerCard({
     <Link
       href={`/me/bucket-list/${cat}`}
       className="flex flex-col items-center gap-2 transition-transform active:scale-95"
+      style={{ rotate: `${meta.rotation}deg` }}
     >
-      <div
-        className="rounded-2xl bg-white p-3 shadow-md"
-        style={{ rotate: `${meta.rotation}deg` }}
-      >
-        {meta.sticker ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={`/stickers/${meta.sticker}.png`}
-            alt={meta.name}
-            className="h-[120px] w-[120px] object-contain"
-          />
-        ) : (
-          <span className="flex h-[120px] w-[120px] items-center justify-center text-[56px]">
-            {meta.emoji}
-          </span>
-        )}
-      </div>
+      {meta.sticker ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/stickers/${meta.sticker}.png`}
+          alt={meta.name}
+          className="h-[150px] w-[150px] object-contain"
+        />
+      ) : (
+        <span className="flex h-[150px] w-[150px] items-center justify-center text-[72px]">
+          {meta.emoji}
+        </span>
+      )}
       <p className="text-[12px] font-bold text-[var(--zx-ink)]">{meta.name}</p>
       <p className="text-[11px] text-[var(--zx-muted)]">
         {count} {count === 1 ? "place" : "places"}
