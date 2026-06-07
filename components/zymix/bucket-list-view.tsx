@@ -148,7 +148,7 @@ export function BucketListView({ items: initial }: { items: BucketItem[] }) {
                     href={mapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[12px] font-medium text-[var(--zx-brand-deep)]"
+                    className="text-[12px] font-medium text-[var(--zx-brand)]"
                   >
                     {item.neighborhood}
                   </a>
@@ -260,7 +260,7 @@ function ItemSheet({
             href={mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[14px] font-semibold text-[var(--zx-brand-deep)]"
+            className="text-[14px] font-semibold text-[var(--zx-brand)]"
           >
             {item.postalCode ?? item.address ?? item.neighborhood}
           </a>
