@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, CalendarDays, Check } from "lucide-react";
+import { ArrowUpRight, Check } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { derivePriceTier } from "@/lib/bucket-ui";
@@ -9,13 +9,6 @@ import type { BucketItem } from "@/lib/domain";
 type PriceTier = "$" | "$$" | "$$$";
 type VisitedFilter = "all" | "not_visited" | "visited";
 
-const PLATFORM_LABEL: Record<string, string> = {
-  tiktok: "TikTok",
-  instagram: "Instagram",
-  screenshot: "Screenshot",
-  manual: "Manual",
-  text: "Text",
-};
 
 export function BucketListView({ items: initial }: { items: BucketItem[] }) {
   const [items, setItems] = useState(initial);
@@ -231,22 +224,6 @@ function ItemSheet({
 
         {/* Chips row */}
         <div className="mb-1 flex items-center gap-2">
-          {item.sourceUrl ? (
-            <a
-              href={item.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 rounded-full bg-[var(--zx-ink)] px-3 py-1 text-[12px] font-semibold text-white"
-            >
-              <CalendarDays size={11} />
-              {PLATFORM_LABEL[item.sourceType] ?? item.sourceType}
-            </a>
-          ) : (
-            <span className="flex items-center gap-1.5 rounded-full bg-[var(--zx-ink)] px-3 py-1 text-[12px] font-semibold text-white">
-              <CalendarDays size={11} />
-              {PLATFORM_LABEL[item.sourceType] ?? item.sourceType}
-            </span>
-          )}
           {item.openingHours && (
             <span
               className="rounded-full px-3 py-1 text-[12px] font-semibold"
