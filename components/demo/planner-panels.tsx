@@ -1,6 +1,6 @@
 import { AlertTriangle, Clock3, MapPinned, PoundSterling, ShieldAlert, Trophy } from "lucide-react";
 
-import type { PersonaId, PlanningCriteria } from "@/lib/domain";
+import type { BucketItem, PersonaId, PlanningCriteria } from "@/lib/domain";
 import type { DemoRecommendation } from "@/lib/demo/data";
 import { demoPersonas, formatMoney, getPersona } from "@/lib/demo/data";
 import { Panel, PersonaDot, Pill } from "@/components/demo/primitives";
@@ -14,6 +14,35 @@ type RecommendationPanelProps = {
   recommendations: DemoRecommendation[];
   currentPersonaId?: PersonaId;
 };
+
+function getDisplayPriceTier(item: BucketItem): "$" | "$$" | "$$$" {
+  const normalizedPrice = item.priceEstimate.trim();
+  const tokens = normalizedPrice.match(/free|\$+|£+/gi) ?? [];
+  const tokenTier = Math.max(
+    ...tokens.map((token) => {
+      if (/free/i.test(token)) {
+        return 0;
+      }
+
+      return token.length;
+    }),
+    0
+  );
+
+  if (tokenTier >= 3 || item.estimatedCost >= 40) {
+    return "$$$";
+  }
+
+  if (tokenTier >= 2 || item.estimatedCost >= 25) {
+    return "$$";
+  }
+
+  if (tokenTier >= 1 || item.estimatedCost > 0) {
+    return "$";
+  }
+
+  return "$$";
+}
 
 export function CriteriaPanel({ criteria, currentPersonaId }: CriteriaPanelProps) {
   return (
@@ -90,9 +119,17 @@ export function RecommendationPanel({ recommendations, currentPersonaId }: Recom
                     <h3 className="text-base font-semibold text-[var(--ink)]">{recommendation.item.title}</h3>
                     {isOwnedByCurrentPersona ? <Pill tone="warm">From your saves</Pill> : null}
                   </div>
-                  <p className="mt-2 text-sm text-[var(--muted)]">
-                    {recommendation.item.neighborhood} / {recommendation.item.priceEstimate} / {recommendation.owner.name}
-                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+                    <span>{recommendation.item.neighborhood}</span>
+                    <span aria-hidden="true">•</span>
+                    <span>{recommendation.owner.name}</span>
+                    <Pill tone="muted" className="normal-case tracking-normal">
+                      {getDisplayPriceTier(recommendation.item)} tier
+                    </Pill>
+                  </div>
+                  {recommendation.item.openingHours ? (
+                    <p className="mt-2 text-sm text-[var(--muted)]">{recommendation.item.openingHours}</p>
+                  ) : null}
                 </div>
                 <div className="inline-flex items-center gap-1 rounded-full bg-[var(--ink)] px-3 py-1.5 text-sm font-semibold text-white">
                   <Trophy size={14} aria-hidden="true" />

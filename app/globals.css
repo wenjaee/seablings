@@ -75,6 +75,33 @@ a {
   display: none;
 }
 
+/* Bucket-list detail sheet entrance */
+@keyframes zx-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes zx-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.zx-sheet-enter {
+  animation: zx-sheet-up 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.zx-backdrop-enter {
+  animation: zx-fade-in 240ms ease-out;
+}
+
 /* Planner bottom-sheet entrance */
 @keyframes planner-sheet-in {
   from {
@@ -90,12 +117,6 @@ a {
 .planner-sheet-in {
   animation: planner-sheet-in 340ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .planner-sheet-in {
-    animation: none;
-  }
 }
 
 /* Celebration pop + confetti */
@@ -137,6 +158,9 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .planner-sheet-in {
+    animation: none;
+  }
   .planner-pop-in {
     animation: none;
   }

@@ -2,7 +2,6 @@ import type { BucketItem, PersonaId } from "@/lib/domain";
 import { personas, seededBucketItems, seededRecommendations } from "@/lib/fixtures";
 import type { PlannerClient } from "@/lib/planner/contract";
 import type {
-  BudgetTier,
   CriteriaResponse,
   MemberProgress,
   PlannerSnapshot,
@@ -22,16 +21,19 @@ import type {
 const STEP_MS = 1800;
 
 const CATEGORY_EMOJI: Record<BucketItem["category"], string> = {
-  eats: "🍽️",
-  drinks: "🍸",
+  bakery: "🥖",
   cafe: "☕",
+  restaurant: "🍽️",
+  bar: "🍸",
   nightlife: "🪩",
   activity: "🎾",
   culture: "🖼️",
-  hidden_gem: "✨",
-  market: "🥖",
+  shopping: "🛍️",
   other: "📍"
 };
+
+/** The planner demo group — excludes the auth-only "tester" persona. */
+const GROUP_PERSONAS = personas.filter((persona) => persona.id !== "tester");
 
 type Listener = (snapshot: PlannerSnapshot) => void;
 
@@ -161,11 +163,11 @@ export class MockPlannerClient implements PlannerClient {
   // --- helpers --------------------------------------------------------------
 
   private otherMemberIds(): PersonaId[] {
-    return personas.map((persona) => persona.id).filter((id) => id !== this.localUserId);
+    return GROUP_PERSONAS.map((persona) => persona.id).filter((id) => id !== this.localUserId);
   }
 
   private buildSnapshot(): PlannerSnapshot {
-    const members: MemberProgress[] = personas.map((persona) => ({
+    const members: MemberProgress[] = GROUP_PERSONAS.map((persona) => ({
       userId: persona.id,
       name: persona.name,
       respondedCriteria: this.responded.has(persona.id),
@@ -248,22 +250,12 @@ function cardFromItem(item: BucketItem, index: number): RecommendationCard {
     area: item.neighborhood,
     address: item.address ?? `${item.neighborhood}, London ${item.postalCode ?? ""}`.trim(),
     emoji: CATEGORY_EMOJI[item.category],
-    budgetTier: budgetTierFromPrice(item.priceEstimate),
+    // priceEstimate is already a "$" / "$$" / "$$$" tier in the domain model.
+    budgetTier: item.priceEstimate,
     // Stable, deterministic faux distance until real postcode math lands.
     distanceKm: Number((1.2 + index * 0.9).toFixed(1)),
     mapsUrl: `https://www.google.com/maps/search/?api=1&query=${query}`
   };
-}
-
-function budgetTierFromPrice(price: string): BudgetTier {
-  const pounds = (price.match(/£/g) ?? []).length;
-  if (pounds >= 3) {
-    return "$$$";
-  }
-  if (pounds === 2) {
-    return "$$";
-  }
-  return "$";
 }
 
 function nextSaturdayNoon(): Date {

@@ -11,13 +11,14 @@ type TabDef = {
   icon: LucideIcon;
   href?: "/" | "/me";
   badge?: number;
+  disabled?: boolean;
 };
 
 const TABS: TabDef[] = [
-  { key: "chat", icon: MessageCircle, href: "/", badge: 3 },
-  { key: "discover", icon: Orbit },
-  { key: "play", icon: CirclePlay },
-  { key: "apps", icon: LayoutGrid },
+  { key: "chat", icon: MessageCircle, href: "/" },
+  { key: "discover", icon: Orbit, disabled: true },
+  { key: "play", icon: CirclePlay, disabled: true },
+  { key: "apps", icon: LayoutGrid, disabled: true },
   { key: "me", icon: User, href: "/me" }
 ];
 
@@ -49,7 +50,13 @@ export function TabBar({ active }: { active: TabKey }) {
               {inner}
             </Link>
           ) : (
-            <button key={tab.key} type="button" aria-label={tab.key} className="flex flex-1 justify-center">
+            <button
+              key={tab.key}
+              type="button"
+              aria-label={tab.key}
+              disabled={tab.disabled}
+              className="flex flex-1 justify-center disabled:pointer-events-none disabled:opacity-40"
+            >
               {inner}
             </button>
           );

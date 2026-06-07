@@ -8,9 +8,6 @@ import { HttpPlannerClient } from "@/lib/planner/http-client";
 import { MockPlannerClient } from "@/lib/planner/mock-client";
 import type { CriteriaResponse, PlannerSnapshot } from "@/lib/planner/types";
 
-/** The local user for the demo (sends `@planner`). Matches the design reference. */
-const LOCAL_USER_ID: PersonaId = "tana";
-
 function createClient(): PlannerClient {
   if (process.env.NEXT_PUBLIC_PLANNER_BACKEND === "http") {
     return new HttpPlannerClient();
@@ -20,9 +17,9 @@ function createClient(): PlannerClient {
 
 type PlannerContextValue = {
   snapshot: PlannerSnapshot | null;
-  localUserId: PersonaId;
+  localUserId: PersonaId | null;
   active: boolean;
-  start: () => Promise<void>;
+  start: (initiatorUserId: PersonaId) => Promise<void>;
   submitMyCriteria: (response: CriteriaResponse) => Promise<void>;
   castMyVote: (bucketItemIds: string[]) => Promise<void>;
 };
@@ -45,19 +42,22 @@ export function PlannerProvider({ groupId, children }: { groupId: string; childr
     };
   }, []);
 
-  const start = useCallback(async () => {
-    const initial = await client.startSession({ groupId, initiatorUserId: LOCAL_USER_ID });
-    unsubscribeRef.current?.();
-    unsubscribeRef.current = client.subscribe(initial.session.id, setSnapshot);
-    setSnapshot(initial);
-  }, [client, groupId]);
+  const start = useCallback(
+    async (initiatorUserId: PersonaId) => {
+      const initial = await client.startSession({ groupId, initiatorUserId });
+      unsubscribeRef.current?.();
+      unsubscribeRef.current = client.subscribe(initial.session.id, setSnapshot);
+      setSnapshot(initial);
+    },
+    [client, groupId]
+  );
 
   const submitMyCriteria = useCallback(
     async (response: CriteriaResponse) => {
       if (!snapshot) {
         return;
       }
-      await client.submitCriteria(snapshot.session.id, LOCAL_USER_ID, response);
+      await client.submitCriteria(snapshot.session.id, snapshot.session.initiatorUserId, response);
     },
     [client, snapshot]
   );
@@ -67,7 +67,7 @@ export function PlannerProvider({ groupId, children }: { groupId: string; childr
       if (!snapshot) {
         return;
       }
-      await client.castVote(snapshot.session.id, LOCAL_USER_ID, bucketItemIds);
+      await client.castVote(snapshot.session.id, snapshot.session.initiatorUserId, bucketItemIds);
     },
     [client, snapshot]
   );
@@ -75,7 +75,7 @@ export function PlannerProvider({ groupId, children }: { groupId: string; childr
   const value = useMemo<PlannerContextValue>(
     () => ({
       snapshot,
-      localUserId: LOCAL_USER_ID,
+      localUserId: snapshot?.session.initiatorUserId ?? null,
       active: snapshot !== null,
       start,
       submitMyCriteria,
