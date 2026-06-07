@@ -1,10 +1,13 @@
 import { ChevronRight, Lock, Orbit, QrCode, UserCog, Users, Wallet } from "lucide-react";
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { Avatar } from "@/components/zymix/avatar";
 import { PhoneShell } from "@/components/zymix/phone-shell";
 import { TabBar } from "@/components/zymix/tab-bar";
-import { profile } from "@/lib/zymix/data";
+import { getCurrentPersona } from "@/lib/server/auth";
+import { getFriendAvatars, getZymixPersona } from "@/lib/zymix/data";
 
 export const metadata = {
   title: "Me · ZYMIX"
@@ -16,17 +19,25 @@ const actionCards = [
   { emoji: "🎁", label: "Invite & Earn" }
 ];
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  const persona = await getCurrentPersona(await cookies());
+  if (!persona) redirect("/login");
+
+  const zymixPersona = getZymixPersona(persona.id);
+  if (!zymixPersona) redirect("/login");
+
+  const friendAvatars = getFriendAvatars(persona.id);
+
   return (
     <PhoneShell>
       <main className="zx-hide-scroll flex-1 overflow-y-auto px-5 pt-1">
         <h1 className="text-[34px] font-extrabold tracking-tight text-[var(--zx-ink)]">Me</h1>
 
         <section className="mt-5 flex items-center gap-4">
-          <Avatar spec={profile.avatar} size={76} />
+          <Avatar spec={zymixPersona.avatar} size={76} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[26px] font-extrabold leading-tight text-[var(--zx-ink)]">{profile.displayName}</p>
-            <p className="truncate text-[16px] text-[var(--zx-muted)]">{profile.handle}</p>
+            <p className="truncate text-[26px] font-extrabold leading-tight text-[var(--zx-ink)]">{zymixPersona.name}</p>
+            <p className="truncate text-[16px] text-[var(--zx-muted)]">{zymixPersona.handle}</p>
           </div>
           <button
             type="button"
@@ -38,11 +49,11 @@ export default function ProfilePage() {
         </section>
 
         <p className="mt-5 text-[16px] text-[var(--zx-muted)]">
-          {profile.followers} followers · {profile.following} following
+          {zymixPersona.followers} followers · {zymixPersona.following} following
         </p>
 
         <section className="mt-5 flex">
-          {profile.stats.map((stat, index) => (
+          {zymixPersona.stats.map((stat, index) => (
             <div key={stat.label} className={index === 0 ? "flex-1 pr-4" : "flex-1 border-l border-[var(--zx-line)] px-4"}>
               <p className="text-[26px] font-extrabold leading-none text-[var(--zx-ink)]">{stat.value}</p>
               <p className="mt-1.5 text-[15px] text-[var(--zx-ink)]">{stat.label}</p>
@@ -94,8 +105,8 @@ export default function ProfilePage() {
             <Users size={24} className="text-[var(--zx-ink)]" />
             <span className="text-[18px] font-semibold text-[var(--zx-ink)]">My Friends</span>
             <span className="ml-auto flex items-center -space-x-3">
-              {profile.friends.map((friend, index) => (
-                <Avatar key={index} spec={friend} size={34} className="ring-2 ring-[var(--zx-surface)]" />
+              {friendAvatars.map((avatarSpec, index) => (
+                <Avatar key={index} spec={avatarSpec} size={34} className="ring-2 ring-[var(--zx-surface)]" />
               ))}
             </span>
             <ChevronRight size={20} className="text-[var(--zx-faint)]" />
