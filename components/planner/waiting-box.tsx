@@ -33,12 +33,14 @@ export function PlannerWaitingBox({
       {members.map((member) => {
         const completed = isDoneFn(member);
         return (
-          <div key={member.userId} className="flex items-center gap-2 py-0.5 text-[13px] text-[var(--zx-muted)]">
+          <div key={member.userId} className="flex min-w-0 items-center gap-2 py-0.5 text-[13px] text-[var(--zx-muted)]">
             <span
               className="h-1.5 w-1.5 shrink-0 rounded-full"
               style={{ background: completed ? "var(--zx-brand)" : "var(--zx-line)" }}
             />
-            {member.name} — {completed ? doneLabel : "pending"}
+            <span className="min-w-0 flex-1 break-words">
+              {member.name} — {completed ? doneLabel : "pending"}
+            </span>
           </div>
         );
       })}
