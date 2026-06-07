@@ -67,7 +67,7 @@ export function PlannerConfirmedPlanCard({
         <div className="mb-2.5 flex items-center gap-2">
         <span
           className="rounded-md px-2 py-0.5 text-[10px] font-extrabold"
-          style={{ background: "var(--zx-brand)", color: "var(--zx-brand-deep)" }}
+          style={{ background: "var(--zx-brand)", color: "#ffffff" }}
         >
           planner
         </span>
@@ -95,7 +95,7 @@ export function PlannerConfirmedPlanCard({
         <button
           type="button"
           onClick={onConfirm}
-          className="mt-2.5 flex w-full items-center justify-center rounded-xl bg-[var(--zx-brand)] py-2.5 text-[14px] font-extrabold text-[var(--zx-brand-deep)]"
+          className="mt-2.5 flex w-full items-center justify-center rounded-xl bg-[var(--zx-brand)] py-2.5 text-[14px] font-extrabold text-white"
         >
           Confirm
         </button>

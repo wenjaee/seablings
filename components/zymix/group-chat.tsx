@@ -502,15 +502,15 @@ function ChatView({
               <div
                 className={
                   message.failed
-                    ? "flex min-w-0 max-w-[78%] items-end gap-2 rounded-2xl rounded-tr-md bg-[#ffd8d3] px-3.5 py-2"
-                    : "flex min-w-0 max-w-[78%] items-end gap-2 rounded-2xl rounded-tr-md bg-[var(--zx-brand)] px-3.5 py-2"
+                    ? "inline-flex min-w-0 max-w-[82%] items-end gap-2 rounded-2xl rounded-tr-md bg-[#ffd8d3] px-3.5 py-2"
+                    : "inline-flex min-w-0 max-w-[82%] items-end gap-2 rounded-2xl rounded-tr-md bg-[var(--zx-brand)] px-3.5 py-2"
                 }
               >
                 <span
                   className={
                     message.failed
-                      ? "min-w-0 flex-1 break-words text-[15px] leading-snug text-[#9f2417]"
-                      : "min-w-0 flex-1 break-words text-[15px] leading-snug text-white"
+                      ? "min-w-0 whitespace-pre-wrap break-words text-[15px] leading-snug text-[#9f2417]"
+                      : "min-w-0 whitespace-pre-wrap break-words text-[15px] leading-snug text-white"
                   }
                 >
                   {message.text}
@@ -523,10 +523,10 @@ function ChatView({
           ) : (
             <div key={message.id} className="mb-3 flex items-start gap-2">
               <Avatar spec={message.avatar} size={36} />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="mb-1 truncate text-[15px] font-semibold text-[var(--zx-ink)]">{message.authorName}</p>
-                <div className="flex min-w-0 max-w-[78%] items-end gap-2 rounded-2xl rounded-tl-md bg-[var(--zx-surface)] px-3.5 py-2">
-                  <span className="min-w-0 flex-1 break-words text-[15px] leading-snug text-[var(--zx-ink)]">{message.text}</span>
+                <div className="inline-flex min-w-0 max-w-[82%] items-end gap-2 rounded-2xl rounded-tl-md bg-[var(--zx-surface)] px-3.5 py-2">
+                  <span className="min-w-0 whitespace-pre-wrap break-words text-[15px] leading-snug text-[var(--zx-ink)]">{message.text}</span>
                   <span className="shrink-0 text-[11px] leading-snug text-[var(--zx-faint)]">{message.time}</span>
                 </div>
               </div>
