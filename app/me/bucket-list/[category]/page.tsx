@@ -1,29 +1,31 @@
 import { ChevronLeft } from "lucide-react";
+import { cookies } from "next/headers";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { BucketListView } from "@/components/zymix/bucket-list-view";
 import { PhoneShell } from "@/components/zymix/phone-shell";
 import { TabBar } from "@/components/zymix/tab-bar";
 import { CATEGORY_META } from "@/lib/bucket-ui";
 import type { BucketCategory } from "@/lib/domain";
+import { getCurrentPersona } from "@/lib/server/auth";
 import { getBackendStore } from "@/lib/server/store";
-
-// TODO: replace with session.userId once auth lands
-const CURRENT_USER_ID = "jeff" as const;
 
 export default async function CategoryListPage({
   params,
 }: {
   params: Promise<{ category: string }>;
 }) {
+  const persona = await getCurrentPersona(await cookies());
+  if (!persona) redirect("/login");
+
   const { category } = await params;
 
   const meta = CATEGORY_META[category as BucketCategory];
   if (!meta) notFound();
 
   const store = getBackendStore();
-  const allItems = await store.listBucketItems({ userId: CURRENT_USER_ID });
+  const allItems = await store.listBucketItems({ userId: persona.id });
   const items = allItems
     .filter(
       (item) =>

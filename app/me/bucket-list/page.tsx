@@ -1,20 +1,23 @@
 import { ChevronLeft } from "lucide-react";
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { PhoneShell } from "@/components/zymix/phone-shell";
 import { TabBar } from "@/components/zymix/tab-bar";
 import { CATEGORY_META } from "@/lib/bucket-ui";
 import type { BucketCategory } from "@/lib/domain";
+import { getCurrentPersona } from "@/lib/server/auth";
 import { getBackendStore } from "@/lib/server/store";
 
 export const metadata = { title: "Bucket List · ZYMIX" };
 
-// TODO: replace with session.userId once auth lands
-const CURRENT_USER_ID = "jeff" as const;
-
 export default async function BucketListLandingPage() {
+  const persona = await getCurrentPersona(await cookies());
+  if (!persona) redirect("/login");
+
   const store = getBackendStore();
-  const allItems = await store.listBucketItems({ userId: CURRENT_USER_ID });
+  const allItems = await store.listBucketItems({ userId: persona.id });
   const visible = allItems.filter(
     (item) => item.status === "saved" || item.status === "completed",
   );
