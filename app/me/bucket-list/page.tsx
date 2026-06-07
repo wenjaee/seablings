@@ -58,7 +58,7 @@ export default async function BucketListLandingPage() {
         ) : (
           <div className="rounded-3xl bg-[#f5efe6] px-4 pb-8 pt-6">
             <div className="flex gap-3">
-              <div className="flex flex-1 flex-col gap-6">
+              <div className="flex flex-1 flex-col gap-2">
                 {left.map((cat) => (
                   <StickerCard
                     key={cat}
@@ -68,7 +68,7 @@ export default async function BucketListLandingPage() {
                   />
                 ))}
               </div>
-              <div className="mt-20 flex flex-1 flex-col gap-6">
+              <div className="mt-16 flex flex-1 flex-col gap-2">
                 {right.map((cat) => (
                   <StickerCard
                     key={cat}
@@ -106,12 +106,12 @@ function StickerCard({
         <img
           src={`/stickers/${meta.sticker}.png`}
           alt={meta.name}
-          className="h-[150px] w-[150px] object-contain"
+          className="h-[170px] w-[170px] object-contain"
           style={{ rotate: `${meta.rotation}deg` }}
         />
       ) : (
         <span
-          className="flex h-[150px] w-[150px] items-center justify-center text-[72px]"
+          className="flex h-[170px] w-[170px] items-center justify-center text-[80px]"
           style={{ rotate: `${meta.rotation}deg` }}
         >
           {meta.emoji}
