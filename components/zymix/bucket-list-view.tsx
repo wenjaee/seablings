@@ -233,7 +233,7 @@ function ItemSheet({
       />
 
       {/* Sheet panel */}
-      <div className={`fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[430px] rounded-t-3xl bg-white px-5 pb-10 pt-7 shadow-2xl transition-transform duration-300 ease-out ${isOpen ? "translate-y-0" : "translate-y-full"}`}>
+      <div className={`fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[430px] rounded-t-3xl bg-white px-5 pb-10 pt-10 shadow-2xl transition-transform duration-300 ease-out ${isOpen ? "translate-y-0" : "translate-y-full"}`}>
         {/* Drag handle */}
         <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-[var(--zx-line)]" />
 
