@@ -542,7 +542,14 @@ function createSupabaseStore(): BackendStore {
       const timestamp = nowIso();
       const item = createBucketItemDomainModel(input, timestamp);
 
-      const { data, error } = await client.from("bucket_items").insert(mapBucketItemDomainToRow(item)).select().single();
+      // The demo Supabase may not have the photo columns yet (migration
+      // 20260607_bucket_item_photos is unapplied there); omit them so the insert
+      // succeeds. The bucket list UI does not depend on them.
+      const insertRow = { ...mapBucketItemDomainToRow(item) } as Record<string, unknown>;
+      delete insertRow.photo_url;
+      delete insertRow.photo_source_links;
+
+      const { data, error } = await client.from("bucket_items").insert(insertRow).select().single();
       if (error) {
         throw new Error(`Failed to create bucket item: ${error.message}`);
       }

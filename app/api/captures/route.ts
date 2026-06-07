@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { matchDemoSeed } from "@/lib/server/demo-seeds";
 import { jsonError, readJsonBody, requireCaptureBearerAuth, statusForError } from "@/lib/server/http";
 import { runIngestionPipeline } from "@/lib/server/ingestion-pipeline";
 import { getBackendStore } from "@/lib/server/store";
@@ -32,6 +33,27 @@ export async function POST(request: NextRequest) {
     const payload = parseCapturePayload(body);
     const store = getBackendStore();
     const task = await store.createCaptureTask(payload);
+
+    // Demo short-circuit: a matched capture (e.g. the DakaDaka TikTok) inserts a
+    // hand-curated, fully-enriched item instead of running the live pipeline.
+    const demoSeed = matchDemoSeed(payload);
+    if (demoSeed) {
+      await store.updateCaptureTaskStatus(task.id, "processing");
+      await store.updateCaptureTaskStatus(task.id, "enriching");
+      const seededItem = await store.createBucketItem(demoSeed.buildItem(payload));
+      const completedTask = await store.updateCaptureTaskStatus(task.id, "completed");
+
+      return NextResponse.json(
+        {
+          task: completedTask ?? task,
+          item: seededItem,
+          items: [seededItem],
+          pipeline: { places: 1, embeddings: 0, mode: "demo-seed", usedFallback: false },
+          mode: store.mode
+        },
+        { status: 201 }
+      );
+    }
 
     await store.updateCaptureTaskStatus(task.id, "processing");
     await store.updateCaptureTaskStatus(task.id, "extracting");
