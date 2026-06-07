@@ -72,13 +72,13 @@ export function BucketListView({ items: initial }: { items: BucketItem[] }) {
   return (
     <>
       {/* Filter bar */}
-      <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+      <div className="mb-3 flex min-w-0 flex-wrap gap-2 pb-1">
         {(["$", "$$", "$$$"] as PriceTier[]).map((tier) => (
           <button
             key={tier}
             type="button"
             onClick={() => togglePriceTier(tier)}
-            className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-medium transition-colors ${
+            className={`rounded-full border px-3 py-1 text-[10px] font-medium transition-colors ${
               priceTiers.has(tier)
                 ? "border-[var(--zx-brand)] bg-[var(--zx-brand)] text-[var(--zx-ink)]"
                 : "border-[var(--zx-line)] text-[var(--zx-muted)]"
@@ -98,7 +98,7 @@ export function BucketListView({ items: initial }: { items: BucketItem[] }) {
             key={f}
             type="button"
             onClick={() => setVisitedFilter(f)}
-            className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-medium transition-colors ${
+            className={`rounded-full border px-3 py-1 text-[10px] font-medium transition-colors ${
               visitedFilter === f
                 ? "border-[var(--zx-brand)] bg-[var(--zx-brand)] text-[var(--zx-ink)]"
                 : "border-[var(--zx-line)] text-[var(--zx-muted)]"
@@ -110,7 +110,7 @@ export function BucketListView({ items: initial }: { items: BucketItem[] }) {
         <button
           type="button"
           onClick={() => setOpenNow((v) => !v)}
-          className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-medium transition-colors ${
+          className={`rounded-full border px-3 py-1 text-[10px] font-medium transition-colors ${
             openNow
               ? "border-[var(--zx-brand)] bg-[var(--zx-brand)] text-[var(--zx-brand-deep)]"
               : "border-[var(--zx-line)] text-[var(--zx-muted)]"

@@ -99,19 +99,23 @@ function StickerCard({
   return (
     <Link
       href={`/me/bucket-list/${cat}`}
-      className="flex w-full flex-col items-center gap-2 transition-transform active:scale-95"
+      className="flex w-full min-w-0 flex-col items-center gap-2 transition-transform active:scale-95"
     >
       {meta.sticker ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={`/stickers/${meta.sticker}.png`}
-          alt={meta.name}
-          className="h-[min(44vw,170px)] w-[min(44vw,170px)] object-contain"
+        <span
+          className="grid aspect-square w-full max-w-[170px] place-items-center"
           style={{ rotate: `${meta.rotation}deg` }}
-        />
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/stickers/${meta.sticker}.png`}
+            alt={meta.name}
+            className="max-h-full max-w-full object-contain"
+          />
+        </span>
       ) : (
         <span
-          className="flex h-[min(44vw,170px)] w-[min(44vw,170px)] items-center justify-center text-[80px]"
+          className="flex aspect-square w-full max-w-[170px] items-center justify-center text-[64px]"
           style={{ rotate: `${meta.rotation}deg` }}
         >
           {meta.emoji}

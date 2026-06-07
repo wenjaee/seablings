@@ -1,26 +1,10 @@
 import type { ReactNode } from "react";
-import { BatteryMedium, SignalHigh, Wifi } from "lucide-react";
-
-function StatusBar() {
-  return (
-    <div className="relative flex h-12 shrink-0 items-center justify-between px-4 sm:px-7 text-[var(--zx-ink)]">
-      <span className="text-[15px] font-semibold tabular-nums tracking-tight">9:41</span>
-      <span aria-hidden className="absolute left-1/2 top-2.5 h-7 w-[82px] -translate-x-1/2 rounded-full bg-black sm:w-[88px]" />
-      <span className="flex items-center gap-1.5">
-        <SignalHigh size={16} />
-        <Wifi size={16} />
-        <BatteryMedium size={21} />
-      </span>
-    </div>
-  );
-}
 
 export function PhoneShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh w-full justify-center bg-[#e6e7ea] sm:items-center sm:py-6">
-      <div className="relative flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-white sm:h-[904px] sm:max-h-[94dvh] sm:rounded-[48px] sm:border sm:border-black/10 sm:shadow-[0_40px_120px_rgba(0,0,0,0.30)]">
-        <StatusBar />
-        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+    <div className="flex min-h-[100svh] w-full justify-center bg-[#e6e7ea] sm:min-h-dvh sm:items-center sm:py-6">
+      <div className="relative flex h-[100svh] w-full max-w-[430px] min-w-0 flex-col overflow-hidden bg-white sm:h-[904px] sm:max-h-[94dvh] sm:rounded-[48px] sm:border sm:border-black/10 sm:shadow-[0_40px_120px_rgba(0,0,0,0.30)]">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
       </div>
     </div>
   );
