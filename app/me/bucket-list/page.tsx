@@ -36,7 +36,7 @@ export default async function BucketListLandingPage() {
 
   return (
     <PhoneShell>
-      <main className="zx-hide-scroll flex flex-1 flex-col overflow-y-auto px-4 pt-1">
+      <main className="zx-hide-scroll flex flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 pt-1">
         <div className="relative flex items-center py-3">
           <Link
             href="/me"
@@ -99,19 +99,19 @@ function StickerCard({
   return (
     <Link
       href={`/me/bucket-list/${cat}`}
-      className="flex flex-col items-center gap-2 transition-transform active:scale-95"
+      className="flex w-full flex-col items-center gap-2 transition-transform active:scale-95"
     >
       {meta.sticker ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={`/stickers/${meta.sticker}.png`}
           alt={meta.name}
-          className="h-[170px] w-[170px] object-contain"
+          className="h-[min(44vw,170px)] w-[min(44vw,170px)] object-contain"
           style={{ rotate: `${meta.rotation}deg` }}
         />
       ) : (
         <span
-          className="flex h-[170px] w-[170px] items-center justify-center text-[80px]"
+          className="flex h-[min(44vw,170px)] w-[min(44vw,170px)] items-center justify-center text-[80px]"
           style={{ rotate: `${meta.rotation}deg` }}
         >
           {meta.emoji}

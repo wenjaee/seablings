@@ -236,12 +236,18 @@ function ItemSheet({
       />
 
       {/* Sheet panel */}
-      <div className={`fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[430px] rounded-t-3xl bg-white px-5 pb-10 pt-10 shadow-2xl transition-transform duration-300 ease-out ${isOpen ? "translate-y-0" : "translate-y-full"}`}>
+      <div
+        className={`fixed left-1/2 z-50 w-full max-w-[430px] -translate-x-1/2 overflow-x-hidden overflow-y-auto rounded-t-3xl bg-white px-5 pb-8 pt-10 shadow-2xl transition-transform duration-300 ease-out ${isOpen ? "translate-y-0" : "translate-y-full"}`}
+        style={{
+          bottom: "calc(4.5rem + env(safe-area-inset-bottom))",
+          maxHeight: "calc(100dvh - 4.5rem - env(safe-area-inset-bottom))",
+        }}
+      >
         {/* Drag handle */}
         <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-[var(--zx-line)]" />
 
         {/* Title */}
-        <h2 className="mb-3 text-[24px] font-extrabold leading-tight text-[var(--zx-ink)]">
+        <h2 className="mb-3 max-w-full break-words text-[24px] font-extrabold leading-tight text-[var(--zx-ink)]">
           {item.title}
         </h2>
 
@@ -269,10 +275,10 @@ function ItemSheet({
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mb-1 flex items-center gap-1 text-[15px] font-semibold"
+          className="mb-1 flex min-w-0 items-center gap-1 text-[15px] font-semibold"
           style={{ color: "var(--zx-brand)" }}
         >
-          {displayAddress}
+          <span className="break-words">{displayAddress}</span>
           <ArrowUpRight size={14} style={{ color: "var(--zx-brand)" }} />
         </a>
 
@@ -287,8 +293,8 @@ function ItemSheet({
             </p>
             <div className="mb-1 space-y-1.5">
               {hoursRows.map(({ day, hours }) => (
-                <div key={day} className="flex items-baseline gap-3">
-                  {day && <span className="text-[14px] text-[var(--zx-ink)]">{day}</span>}
+                <div key={day} className="flex min-w-0 items-baseline gap-3">
+                  {day && <span className="max-w-full min-w-0 text-[14px] text-[var(--zx-ink)]">{day}</span>}
                   {hours === null ? (
                     <span className="text-[14px] text-[var(--zx-muted)]">Closed</span>
                   ) : (
