@@ -814,7 +814,6 @@ export function PlannerStateCard({
   const isVoting = session.status === "voting";
   const isActiveSession = isCollecting || isVoting;
   const criteriaCount = Object.keys(session.criteriaByUserId).length;
-  const voteCount = Object.keys(session.votesByUserId).length;
   const participantCount = session.participants.length;
   const missingCriteria = session.participants.filter((participantId) => !session.criteriaByUserId[participantId]);
   const missingVotes = session.participants.filter((participantId) => !session.votesByUserId[participantId]);
@@ -826,6 +825,35 @@ export function PlannerStateCard({
 
   if (session.status === "completed") {
     return null;
+  }
+
+  if (isVoting) {
+    const waitingOn = missingVotes.map(getParticipantLabel).join(", ");
+
+    return (
+      <section className="mb-4 rounded-[28px] border border-black/6 bg-white px-4 py-4 shadow-[0_14px_28px_rgba(15,23,42,0.08)]">
+        <h2 className="break-words text-[18px] font-semibold text-[var(--zx-ink)]">Shortlist ready</h2>
+
+        <div className="mt-4 space-y-3">
+          {shouldShowAggregateCriteria ? (
+            <div className="rounded-[22px] bg-[var(--zx-surface)] px-4 py-3">
+              <p className="text-[12px] font-semibold text-[var(--zx-muted)]">Outing Details</p>
+              {aggregateAvailability ? <p className="mt-1.5 break-words text-[14px] font-medium text-[var(--zx-ink)]">Availability: {aggregateAvailability}</p> : null}
+              {aggregateBudget ? (
+                <p className="mt-1.5 break-words text-[14px] text-[var(--zx-ink)]">Budget: {aggregateBudget}</p>
+              ) : null}
+              {aggregateVetoes ? <p className="mt-1.5 break-words text-[14px] text-[var(--zx-ink)]">Vetoes: {aggregateVetoes}</p> : null}
+            </div>
+          ) : null}
+
+          <div className="rounded-[22px] bg-[var(--zx-surface)] px-4 py-3">
+            <p className="break-words text-[14px] font-semibold text-[var(--zx-ink)]">
+              {missingVotes.length > 0 ? `Waiting on ${waitingOn}` : "All votes submitted"}
+            </p>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -905,49 +933,6 @@ export function PlannerStateCard({
                 </span>
               );
             })}
-          </div>
-        </div>
-      ) : null}
-
-      {isVoting ? (
-        <div className="mt-4 space-y-4">
-          {shouldShowAggregateCriteria ? (
-            <div className="rounded-[22px] bg-[var(--zx-surface)] px-4 py-3">
-              <p className="text-[12px] text-[var(--zx-muted)]">Session criteria</p>
-              {aggregateAvailability ? <p className="mt-1.5 break-words text-[14px] font-medium text-[var(--zx-ink)]">Availability: {aggregateAvailability}</p> : null}
-              {aggregateBudget ? (
-                <p className="mt-1.5 break-words text-[14px] text-[var(--zx-ink)]">Budget: {aggregateBudget}</p>
-              ) : null}
-              {aggregateVetoes ? <p className="mt-1.5 break-words text-[14px] text-[var(--zx-ink)]">Vetoes: {aggregateVetoes}</p> : null}
-            </div>
-          ) : null}
-
-          <div className="rounded-[22px] bg-[var(--zx-surface)] px-4 py-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="text-[13px] text-[var(--zx-muted)]">Votes submitted</p>
-                <p className="mt-1 text-[24px] font-semibold text-[var(--zx-ink)]">
-                  {voteCount}/{participantCount}
-                </p>
-              </div>
-              {session.proposedTime ? (
-                <p className="inline-flex min-w-0 flex-wrap items-center gap-2 break-words text-[13px] text-[var(--zx-muted)]">
-                  <Clock3 size={14} aria-hidden />
-                  {session.proposedTime}
-                </p>
-              ) : null}
-            </div>
-            {missingVotes.length > 0 ? (
-              <p className="mt-2 break-words text-[13px] text-[var(--zx-muted)]">
-                Waiting on {missingVotes.map(getParticipantLabel).join(", ")}.
-              </p>
-            ) : null}
-          </div>
-
-          <div className="space-y-3">
-            {session.recommendations.map((recommendation) => (
-              <RecommendationCard key={recommendation.bucketItemId} recommendation={recommendation} compact />
-            ))}
           </div>
         </div>
       ) : null}
@@ -1039,25 +1024,16 @@ export function PlannerThread({
   isRemovingPlan?: boolean;
 }) {
   const isCollecting = session.status === "collecting";
-  const isVoting = session.status === "voting";
   const isCompleted = session.status === "completed";
   const hasSubmittedCriteria = Boolean(session.criteriaByUserId[currentPersonaId]);
-  const hasSubmittedVotes = Boolean(session.votesByUserId?.[currentPersonaId]);
   const missingCriteria = session.participants.filter((participantId) => !session.criteriaByUserId[participantId]);
-  const missingVotes = session.participants.filter((participantId) => !session.votesByUserId[participantId]);
   const criteriaMembers = session.participants.map((participantId) => ({
     userId: participantId,
     name: getParticipantLabel(participantId),
     respondedCriteria: Boolean(session.criteriaByUserId[participantId])
   }));
-  const votingMembers = session.participants.map((participantId) => ({
-    userId: participantId,
-    name: getParticipantLabel(participantId),
-    voted: Boolean(session.votesByUserId[participantId])
-  }));
 
   const showCriteriaWaiting = isCollecting && hasSubmittedCriteria && missingCriteria.length > 0;
-  const showVotingWaiting = isVoting && hasSubmittedVotes && missingVotes.length > 0;
 
   return (
     <section className="mb-2 space-y-2">
@@ -1072,10 +1048,6 @@ export function PlannerThread({
 
       {showCriteriaWaiting ? (
         <PlannerWaitingBox title="Waiting for criteria" members={criteriaMembers} doneLabel="submitted" />
-      ) : null}
-
-      {showVotingWaiting ? (
-        <PlannerWaitingBox title="Waiting for votes" members={votingMembers} doneLabel="voted" />
       ) : null}
 
       {isCompleted && !isMinimized ? (
