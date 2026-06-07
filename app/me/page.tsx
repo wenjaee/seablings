@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { Avatar } from "@/components/zymix/avatar";
 import { PhoneShell } from "@/components/zymix/phone-shell";
 import { TabBar } from "@/components/zymix/tab-bar";
+import { LogoutButton } from "@/components/zymix/logout-button";
 import { getCurrentPersona } from "@/lib/server/auth";
 import { getFriendAvatars, getZymixPersona } from "@/lib/zymix/data";
 
@@ -126,6 +127,8 @@ export default async function ProfilePage() {
             <ChevronRight size={20} className="ml-auto text-[var(--zx-faint)]" />
           </button>
         </section>
+
+        <LogoutButton />
 
         <div className="h-4" />
       </main>
