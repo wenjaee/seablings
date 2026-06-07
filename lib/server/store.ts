@@ -62,6 +62,7 @@ type BackendStore = {
   listBucketItems(filters?: ListBucketItemFilters): Promise<BucketItem[]>;
   createBucketItem(input: ManualBucketItemInput): Promise<BucketItem>;
   saveBucketItemEmbedding(input: BucketItemEmbeddingInput): Promise<void>;
+  getBucketItemById(id: string): Promise<BucketItem | null>;
   updateBucketItemStatus(id: string, status: BucketItemStatus): Promise<BucketItem | null>;
   listZymixMessages(filters: ListZymixMessageFilters): Promise<ZymixMessage[]>;
   createZymixMessage(userId: ZymixMessage["userId"], input: CreateZymixMessageInput): Promise<ZymixMessage>;
@@ -309,6 +310,12 @@ function createDemoStore(): BackendStore {
         updatedAt: timestamp
       });
     },
+    async getBucketItemById(id) {
+      const state = getDemoState();
+      const item = state.bucketItems.find((candidate) => candidate.id === id);
+
+      return item ? { ...item } : null;
+    },
     async updateBucketItemStatus(id, status) {
       const state = getDemoState();
       const item = state.bucketItems.find((candidate) => candidate.id === id);
@@ -534,6 +541,16 @@ function createSupabaseStore(): BackendStore {
       if (error) {
         throw new Error(`Failed to save bucket item embedding: ${error.message}`);
       }
+    },
+    async getBucketItemById(id) {
+      await ensureSupabaseSeeded(client);
+
+      const { data, error } = await client.from("bucket_items").select("*").eq("id", id).maybeSingle();
+      if (error) {
+        throw new Error(`Failed to load bucket item: ${error.message}`);
+      }
+
+      return data ? mapBucketItemRowToDomain(data as BucketItemRow) : null;
     },
     async updateBucketItemStatus(id, status) {
       await ensureSupabaseSeeded(client);
