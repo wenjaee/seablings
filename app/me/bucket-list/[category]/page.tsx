@@ -35,7 +35,7 @@ export default async function CategoryListPage({
   return (
     <PhoneShell>
       <main className="zx-hide-scroll flex-1 overflow-y-auto px-5 pt-1">
-        <div className="flex items-center gap-3 pb-2 pt-1">
+        <div className="flex items-center gap-3 pb-5 pt-1">
           <Link
             href="/me/bucket-list"
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--zx-surface)]"
