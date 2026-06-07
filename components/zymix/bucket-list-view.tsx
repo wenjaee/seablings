@@ -287,7 +287,7 @@ function ItemSheet({
             </p>
             <div className="mb-1 space-y-1.5">
               {hoursRows.map(({ day, hours }) => (
-                <div key={day} className="flex items-baseline justify-between">
+                <div key={day} className="flex items-baseline gap-3">
                   <span className="text-[14px] text-[var(--zx-ink)]">{day}</span>
                   {hours === null ? (
                     <span className="text-[14px] text-[var(--zx-muted)]">Closed</span>
